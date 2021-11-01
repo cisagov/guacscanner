@@ -1,5 +1,5 @@
 """
-This is the setup module for the example project.
+This is the setup module for the guacscanner project.
 
 Based on:
 
@@ -42,10 +42,10 @@ def get_version(version_file):
 
 
 setup(
-    name="example",
+    name="guacscanner",
     # Versions should comply with PEP440
-    version=get_version("src/example/_version.py"),
-    description="Example Python library",
+    version=get_version("src/guacscanner/_version.py"),
+    description="Scan for EC2 instances added (removed) from a VPC and create (destroy) the corresponding Guacamole connections.",
     long_description=readme(),
     long_description_content_type="text/markdown",
     # Landing page for CISA's cybersecurity mission
@@ -81,13 +81,20 @@ setup(
     ],
     python_requires=">=3.6",
     # What does your project relate to?
-    keywords="skeleton",
+    keywords="aws, guacamole, vpc",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    package_data={"example": ["data/*.txt"]},
+    # package_data={"guacamole-connection-scanner": ["data/*.txt"]},
     py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
-    install_requires=["docopt", "schema", "setuptools >= 24.2.0"],
+    install_requires=[
+        "boto3 == 1.19.6",
+        "docopt == 0.6.2",
+        "ec2-metadata == 2.5.0",
+        "psycopg == 3.0.1",
+        "schema == 0.7.4",
+        "setuptools >= 24.2.0",
+    ],
     extras_require={
         "test": [
             "coverage",
@@ -98,11 +105,17 @@ setup(
             # 1.11.1 fixed this issue, but to ensure expected behavior we'll pin
             # to never grab the regression version.
             "coveralls != 1.11.0",
+            "moto",
             "pre-commit",
             "pytest-cov",
             "pytest",
         ]
     },
-    # Conveniently allows one to run the CLI tool as `example`
-    entry_points={"console_scripts": ["example = example.example:main"]},
+    # Conveniently allows one to run the CLI tool as
+    # `guacscanner`
+    entry_points={
+        "console_scripts": [
+            "guacscanner = guacscanner.guacscanner:main",
+        ],
+    },
 )
