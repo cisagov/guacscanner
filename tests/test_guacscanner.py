@@ -176,8 +176,8 @@ def test_new_linux_instance():
 
 
 @mock_ec2
-def test_stale_linux_instance():
-    """Verify that adding a stale Linux instance works as expected."""
+def test_terminated_linux_instance():
+    """Verify that adding a terminated Linux instance works as expected."""
     # Create and populate a VPC with a stale EC2 instance
     ec2 = boto3.client("ec2", "us-east-1")
     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
@@ -292,8 +292,8 @@ def test_new_windows_instance():
 
 
 @mock_ec2
-def test_stale_windows_instance():
-    """Verify that adding a stale Windows instance works as expected."""
+def test_terminated_windows_instance():
+    """Verify that adding a terminated Windows instance works as expected."""
     # Create and populate a VPC with a stale EC2 instance
     ec2 = boto3.client("ec2", "us-east-1")
     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
