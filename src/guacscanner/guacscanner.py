@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--postgres-password=PASSWORD] [--postgres-password-file=FILENAME] [--private-ssh-key=KEY] [--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME] [--postgres-username-file=FILENAME] [--vnc-password=PASSWORD] [--vnc-password-file=FILENAME] [--vnc-username=USERNAME] [--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
+  guacscanner [--log-level=LEVEL] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
   guacscanner (-h | --help)
 
 Options:
@@ -22,6 +22,10 @@ Options:
   --postgres-username-file=FILENAME    The file from which the PostgreSQL username will be read. [default: /run/secrets/postgres-username]
   --private-ssh-key=KEY  If specified then the specified value will be used for the private ssh key.  Otherwise, the ssh key will be read from a local file.
   --private-ssh-key-file=FILENAME  The file from which the private ssh key will be read. [default: /run/secrets/private-ssh-key]
+  --rdp-password=PASSWORD  If specified then the specified value will be used for the RDP password.  Otherwise, the password will be read from a local file.
+  --rdp-password-file=FILENAME  The file from which the RDP password will be read. [default: /run/secrets/rdp-password]
+  --rdp-username=USERNAME  If specified then the specified value will be used for the RDP username.  Otherwise, the username will be read from a local file.
+  --rdp-username-file=FILENAME  The file from which the RDP username will be read. [default: /run/secrets/rdp-username]
   --vnc-password=PASSWORD  If specified then the specified value will be used for the VNC password.  Otherwise, the password will be read from a local file.
   --vnc-password-file=FILENAME  The file from which the VNC password will be read. [default: /run/secrets/vnc-password]
   --vnc-username=USERNAME  If specified then the specified value will be used for the VNC username.  Otherwise, the username will be read from a local file.
@@ -119,7 +123,7 @@ def instance_connection_exists(db_connection, connection_name):
             connection_name,
         )
         cursor.execute(COUNT_QUERY, (connection_name,))
-        count = cursor.fetchone()["count"] != 0
+        count = cursor.fetchone()[0]["count"]
         if count != 0:
             logging.debug(
                 "A connection named %s exists in the database.", connection_name
@@ -133,18 +137,33 @@ def instance_connection_exists(db_connection, connection_name):
 
 
 def add_instance_connection(
-    db_connection, instance, vnc_username, vnc_password, private_ssh_key
+    db_connection,
+    instance,
+    vnc_username,
+    vnc_password,
+    private_ssh_key,
+    rdp_username,
+    rdp_password,
 ):
     """Add a connection for the EC2 instance."""
     logging.debug("Adding connection entry for %s.", instance.id)
     hostname = instance.private_dns_name
     connection_name = get_connection_name(instance)
+    is_windows = False
+    connection_protocol = "vnc"
+    connection_port = 5901
+    if instance.platform and instance.platform.lower() == "windows":
+        logging.debug("Instance %s is Windows and therefore uses RDP.", instance.id)
+        is_windows = True
+        connection_protocol = "rdp"
+        connection_port = 3389
+
     with db_connection.cursor() as cursor:
         cursor.execute(
             INSERT_CONNECTION_QUERY,
             (
                 connection_name,
-                "vnc",
+                connection_protocol,
                 10,
                 10,
                 4822,
@@ -152,54 +171,71 @@ def add_instance_connection(
                 "NONE",
             ),
         )
-        connection_id = cursor.fetchone()["id"]
+        connection_id = cursor.fetchone()[0]["connection_id"]
 
-        logging.debug(
-            "Adding connection parameter entries for connection named %s.",
-            connection_name,
-        )
-        cursor.executemany(
-            INSERT_CONNECTION_PARAMETER_QUERY,
+        guac_conn_params = (
             (
+                connection_id,
+                "cursor",
+                "local",
+            ),
+            (
+                connection_id,
+                "sftp-directory",
+                f"/home/{vnc_username}/Documents",
+            ),
+            (
+                connection_id,
+                "sftp-username",
+                vnc_username,
+            ),
+            (
+                connection_id,
+                "sftp-private-key",
+                private_ssh_key,
+            ),
+            (
+                connection_id,
+                "sftp-server-alive-interval",
+                60,
+            ),
+            (
+                connection_id,
+                "sftp-root-directory",
+                f"/home/{vnc_username}/",
+            ),
+            (
+                connection_id,
+                "enable-sftp",
+                True,
+            ),
+            (
+                connection_id,
+                "color-depth",
+                24,
+            ),
+            (
+                connection_id,
+                "hostname",
+                hostname,
+            ),
+            (
+                connection_id,
+                "password",
+                vnc_password,
+            ),
+            (
+                connection_id,
+                "port",
+                connection_port,
+            ),
+        )
+        if is_windows:
+            guac_conn_params = (
                 (
                     connection_id,
-                    "cursor",
-                    "local",
-                ),
-                (
-                    connection_id,
-                    "sftp-directory",
-                    f"/home/{vnc_username}/Documents",
-                ),
-                (
-                    connection_id,
-                    "sftp-username",
-                    vnc_username,
-                ),
-                (
-                    connection_id,
-                    "sftp-private-key",
-                    private_ssh_key,
-                ),
-                (
-                    connection_id,
-                    "sftp-server-alive-interval",
-                    60,
-                ),
-                (
-                    connection_id,
-                    "sftp-root-directory",
-                    f"/home/{vnc_username}/",
-                ),
-                (
-                    connection_id,
-                    "enable-sftp",
+                    "ignore-cert",
                     True,
-                ),
-                (
-                    connection_id,
-                    "color-depth",
-                    24,
                 ),
                 (
                     connection_id,
@@ -209,15 +245,25 @@ def add_instance_connection(
                 (
                     connection_id,
                     "password",
-                    vnc_password,
+                    rdp_password,
                 ),
                 (
                     connection_id,
                     "port",
-                    5901,
+                    connection_port,
                 ),
-            ),
+                (
+                    connection_id,
+                    "username",
+                    rdp_username,
+                ),
+            )
+
+        logging.debug(
+            "Adding connection parameter entries for connection named %s.",
+            connection_name,
         )
+        cursor.executemany(INSERT_CONNECTION_PARAMETER_QUERY, guac_conn_params)
 
     # Commit all pending transactions to the database
     db_connection.commit()
@@ -261,10 +307,12 @@ def process_instance(
     vnc_username,
     vnc_password,
     private_ssh_key,
+    rdp_username,
+    rdp_password,
 ):
     """Add/remove connections for the specified EC2 instance."""
     logging.debug("Examining instance %s.", instance.id)
-    state = instance.state.name
+    state = instance.state["Name"]
     connection_name = get_connection_name(instance)
     logging.debug("Connection name is %s.", connection_name)
     if state in add_instance_states:
@@ -273,10 +321,17 @@ def process_instance(
             instance.id,
             state,
         )
+        db_connection.cursor()
         if not instance_connection_exists(db_connection, connection_name):
             logging.info("Adding a connection for %s.", instance.id)
             add_instance_connection(
-                db_connection, instance, vnc_username, vnc_password, private_ssh_key
+                db_connection,
+                instance,
+                vnc_username,
+                vnc_password,
+                private_ssh_key,
+                rdp_username,
+                rdp_password,
             )
         else:
             logging.debug(
@@ -316,7 +371,8 @@ def main() -> None:
                 And(
                     str,
                     Use(str.lower),
-                    lambda x: re.fullmatch(r"^vpc-[0-9a-f]{17}$", x) is not None,
+                    lambda x: re.fullmatch(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$", x)
+                    is not None,
                     error="Possible values for --vpc-id are the characters vpc- followed by 17 hexadecimal digits.",
                 ),
             ),
@@ -355,6 +411,20 @@ def main() -> None:
     else:
         with open(validated_args["--postgres-username-file"], "r") as file:
             postgres_username = file.read()
+
+    rdp_password = None
+    if "--rdp-password" in validated_args:
+        rdp_password = validated_args["--rdp-password"]
+    else:
+        with open(validated_args["--rdp-password-file"], "r") as file:
+            rdp_password = file.read()
+
+    rdp_username = None
+    if "--rdp-username" in validated_args:
+        rdp_username = validated_args["--rdp-username"]
+    else:
+        with open(validated_args["--rdp-username-file"], "r") as file:
+            rdp_username = file.read()
 
     vnc_password = None
     if "--vnc-password" in validated_args:
@@ -398,6 +468,8 @@ def main() -> None:
                 vnc_username,
                 vnc_password,
                 private_ssh_key,
+                rdp_username,
+                rdp_password,
             )
 
         # logging.debug(
