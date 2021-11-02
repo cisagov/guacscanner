@@ -226,7 +226,9 @@ def test_terminated_linux_instance():
             mock_connect.assert_called_once()
             mock_connection.cursor.assert_called()
             mock_connection.commit.assert_called()
+            mock_cursor.fetchone.assert_not_called()
             mock_cursor.execute.assert_called()
+            mock_cursor.fetchone.executemany.assert_not_called()
             # Two executes
             mock_cursor.call_count == 2
 
@@ -347,6 +349,8 @@ def test_terminated_windows_instance():
             mock_connect.assert_called_once()
             mock_connection.cursor.assert_called()
             mock_connection.commit.assert_called()
+            mock_cursor.fetchone.assert_not_called()
             mock_cursor.execute.assert_called()
+            mock_cursor.fetchone.executemany.assert_not_called()
             # Two executes
             mock_cursor.call_count == 2
