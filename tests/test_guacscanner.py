@@ -171,8 +171,6 @@ def test_new_linux_instance():
             mock_cursor.fetchone.assert_called()
             mock_cursor.execute.assert_called()
             mock_cursor.executemany.assert_called()
-            # Two executes, two fetchones, and one executemany
-            mock_cursor.call_count == 5
 
 
 @mock_ec2
@@ -228,9 +226,7 @@ def test_terminated_instance():
             mock_connection.commit.assert_called()
             mock_cursor.fetchone.assert_not_called()
             mock_cursor.execute.assert_called()
-            mock_cursor.fetchone.executemany.assert_not_called()
-            # Two executes
-            mock_cursor.call_count == 2
+            mock_cursor.executemany.assert_not_called()
 
 
 @mock_ec2
@@ -282,8 +278,8 @@ def test_stopped_instance():
         ) as mock_connect:
             guacscanner.guacscanner.main()
             mock_connect.assert_called_once()
-            mock_connection.cursor.assert_not_called()
-            mock_connection.commit.assert_not_called()
+            mock_connection.cursor.assert_called()
+            mock_connection.commit.assert_called()
 
 
 @mock_ec2
@@ -342,5 +338,3 @@ def test_new_windows_instance():
             mock_cursor.fetchone.assert_called()
             mock_cursor.execute.assert_called()
             mock_cursor.executemany.assert_called()
-            # Two executes, two fetchones, and one executemany
-            mock_cursor.call_count == 5
