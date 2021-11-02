@@ -172,7 +172,64 @@ def test_new_linux_instance():
             mock_cursor.execute.assert_called()
             mock_cursor.executemany.assert_called()
             # Two executes, two fetchones, and one executemany
-            mock_cursor.call_count = 5
+            mock_cursor.call_count == 5
+
+
+@mock_ec2
+def test_stale_linux_instance():
+    """Verify that adding a stale Linux instance works as expected."""
+    # Create and populate a VPC with a stale EC2 instance
+    ec2 = boto3.client("ec2", "us-east-1")
+    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+    vpc_id = vpc["Vpc"]["VpcId"]
+    subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
+    subnet_id = subnet["Subnet"]["SubnetId"]
+    amis = ec2.describe_images(
+        Filters=[
+            {"Name": "Name", "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"]}
+        ]
+    )
+    ami = amis["Images"][0]
+    ami_id = ami["ImageId"]
+    instances = ec2.run_instances(
+        ImageId=ami_id, SubnetId=subnet_id, MaxCount=1, MinCount=1
+    )
+    instance_id = instances["Instances"][0]["InstanceId"]
+    ec2.terminate_instances(InstanceIds=[instance_id])
+
+    # Mock the PostgreSQL database connection
+    mock_connection = MagicMock(name="Mock PostgreSQL connection")
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.side_effect = [[{"count": 0}], [{"connection_id": 1}]]
+    mock_connection.__enter__.return_value = mock_connection
+    mock_connection.cursor.return_value = mock_cursor
+
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "--log-level=debug",
+            "--postgres-password=dummy_db_password",
+            "--postgres-username=dummy_db_username",
+            "--private-ssh-key=dummy_key",
+            "--rdp-password=dummy_rdp_password",
+            "--rdp-username=dummy_rdp_username",
+            "--vnc-password=dummy_vnc_password",
+            "--vnc-username=dummy_vnc_username",
+            f"--vpc-id={vpc_id}",
+        ],
+    ):
+        with patch.object(
+            psycopg, "connect", return_value=mock_connection
+        ) as mock_connect:
+            guacscanner.guacscanner.main()
+            mock_connect.assert_called_once()
+            mock_connection.cursor.assert_called()
+            mock_connection.commit.assert_called()
+            mock_cursor.execute.assert_called()
+            # Two executes
+            mock_cursor.call_count == 2
 
 
 @mock_ec2
@@ -232,4 +289,66 @@ def test_new_windows_instance():
             mock_cursor.execute.assert_called()
             mock_cursor.executemany.assert_called()
             # Two executes, two fetchones, and one executemany
-            mock_cursor.call_count = 5
+            mock_cursor.call_count == 5
+
+
+@mock_ec2
+def test_stale_windows_instance():
+    """Verify that adding a stale Windows instance works as expected."""
+    # Create and populate a VPC with a stale EC2 instance
+    ec2 = boto3.client("ec2", "us-east-1")
+    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+    vpc_id = vpc["Vpc"]["VpcId"]
+    subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
+    subnet_id = subnet["Subnet"]["SubnetId"]
+    amis = ec2.describe_images(
+        Filters=[
+            {
+                "Name": "Name",
+                "Values": [
+                    "Windows_Server-2016-English-Full-SQL_2017_Enterprise-2017.10.13"
+                ],
+            }
+        ]
+    )
+    ami = amis["Images"][0]
+    ami_id = ami["ImageId"]
+    instances = ec2.run_instances(
+        ImageId=ami_id, SubnetId=subnet_id, MaxCount=1, MinCount=1
+    )
+    instance_id = instances["Instances"][0]["InstanceId"]
+    ec2.terminate_instances(InstanceIds=[instance_id])
+
+    # Mock the PostgreSQL database connection
+    mock_connection = MagicMock(name="Mock PostgreSQL connection")
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.side_effect = [[{"count": 0}], [{"connection_id": 1}]]
+    mock_connection.__enter__.return_value = mock_connection
+    mock_connection.cursor.return_value = mock_cursor
+
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "--log-level=debug",
+            "--postgres-password=dummy_db_password",
+            "--postgres-username=dummy_db_username",
+            "--private-ssh-key=dummy_key",
+            "--rdp-password=dummy_rdp_password",
+            "--rdp-username=dummy_rdp_username",
+            "--vnc-password=dummy_vnc_password",
+            "--vnc-username=dummy_vnc_username",
+            f"--vpc-id={vpc_id}",
+        ],
+    ):
+        with patch.object(
+            psycopg, "connect", return_value=mock_connection
+        ) as mock_connect:
+            guacscanner.guacscanner.main()
+            mock_connect.assert_called_once()
+            mock_connection.cursor.assert_called()
+            mock_connection.commit.assert_called()
+            mock_cursor.execute.assert_called()
+            # Two executes
+            mock_cursor.call_count == 2
