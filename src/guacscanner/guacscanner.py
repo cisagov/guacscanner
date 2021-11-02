@@ -383,7 +383,7 @@ def main() -> None:
         vpc_id = ec2_metadata.vpc_id
     logging.info("Examining instances in VPC %s.", vpc_id)
 
-    ec2 = boto3.resource("ec2")
+    ec2 = boto3.resource("ec2", region_name="us-east-1")
 
     with psycopg.connect(db_connection_string) as db_connection:
         for instance in ec2.Vpc(vpc_id).instances.all():
