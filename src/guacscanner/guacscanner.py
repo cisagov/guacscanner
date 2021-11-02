@@ -44,7 +44,7 @@ import docopt
 from ec2_metadata import ec2_metadata
 import psycopg
 from psycopg import sql
-from schema import And, Schema, SchemaError, Use
+from schema import And, Optional, Or, Schema, SchemaError, Use
 
 from ._version import __version__
 
@@ -311,11 +311,14 @@ def main() -> None:
                 error="Possible values for --log-level are "
                 + "debug, info, warning, error, and critical.",
             ),
-            "--vpc-id": And(
-                str,
-                Use(str.lower),
-                lambda x: re.fullmatch(r"^vpc-[0-9a-f]{17}$", x) is not None,
-                error="Possible values for --vpc-id are the characters vpc- followed by 17 hexadecimal digits.",
+            Optional("--vpc-id"): Or(
+                None,
+                And(
+                    str,
+                    Use(str.lower),
+                    lambda x: re.fullmatch(r"^vpc-[0-9a-f]{17}$", x) is not None,
+                    error="Possible values for --vpc-id are the characters vpc- followed by 17 hexadecimal digits.",
+                ),
             ),
             str: object,  # Don't care about other keys, if any
         }
