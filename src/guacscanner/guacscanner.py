@@ -269,8 +269,18 @@ def add_instance_connection(
     db_connection.commit()
 
 
+def remove_connection(db_connection, connection_id):
+    """Remove all connections corresponding to the specified ID."""
+    logging.debug("Removing connection entries for %s.", connection_id)
+    with db_connection.cursor() as cursor:
+        cursor.execute(DELETE_CONNECTIONS_QUERY, (connection_id,))
+
+        logging.debug("Removing connection parameter entries for %s.", connection_id)
+        cursor.execute(DELETE_CONNECTION_PARAMETERS_QUERY, (connection_id,))
+
+
 def remove_instance_connections(db_connection, instance):
-    """Remove all connections corresponding to the EC2 isntance."""
+    """Remove all connections corresponding to the EC2 instance."""
     logging.debug("Removing connections for %s.", instance.id)
     connection_name = get_connection_name(instance)
     with db_connection.cursor() as cursor:
@@ -282,13 +292,7 @@ def remove_instance_connections(db_connection, instance):
         for record in cursor:
             logging.info("Removing entries for connections named %s.", connection_name)
             connection_id = record["connection_id"]
-            logging.debug("Removing connection entries for %s.", connection_id)
-            cursor.execute(DELETE_CONNECTIONS_QUERY, (connection_id,))
-
-            logging.debug(
-                "Removing connection parameter entries for %s.", connection_id
-            )
-            cursor.execute(DELETE_CONNECTION_PARAMETERS_QUERY, (connection_id,))
+            remove_connection(db_connection, connection_id)
 
     # Commit all pending transactions to the database
     db_connection.commit()
@@ -350,6 +354,28 @@ def process_instance(
             instance.id,
             state,
         )
+
+
+def check_for_ghost_instances(db_connection):
+    """Check to see if any connections belonging to nonexistent instances are in the database."""
+    with db_connection.cursor() as cursor:
+        cursor.execute(NAMES_QUERY)
+        for record in cursor:
+            connection_id = record["connection_id"]
+            connection_name = record["connection_name"]
+            m = re.match(r"^.* \((?P<id>i-\d{17})\)$", connection_name)
+            instance_id = None
+            if m:
+                instance_id = m.group("id")
+
+            ec2 = boto3.resource("ec2", region_name="us-east-1")
+            try:
+                ec2.Instance(instance_id)
+            except Exception as e:
+                print(e)
+                remove_connection(db_connection, connection_id)
+
+    db_connection.commit()
 
 
 def main() -> None:
@@ -457,7 +483,6 @@ def main() -> None:
     logging.info("Examining instances in VPC %s.", vpc_id)
 
     ec2 = boto3.resource("ec2", region_name="us-east-1")
-
     with psycopg.connect(db_connection_string) as db_connection:
         for instance in ec2.Vpc(vpc_id).instances.all():
             process_instance(
@@ -472,17 +497,9 @@ def main() -> None:
                 rdp_password,
             )
 
-        # logging.debug(
-        #     "Checking to see if any connections belonging to nonexistent instances are in the database."
-        # )
-        # cursor.execute(NAMES_QUERY)
-        # for record in cursor:
-        #     connection_id = record["connection_id"]
-        #     connection_name = record["connection_name"]
-        #     m = re.match(r"^.* \((?P<id>i-\d{17})\)$", connection_name)
-        #     instance_id = None
-        #     if m:
-        #         instance_id = m.group("id")
-        #     ec2.Instance(instance_id)
+        logging.info(
+            "Checking to see if any connections belonging to nonexistent instances are in the database."
+        )
+        check_for_ghost_instances(db_connection)
 
     logging.shutdown()
