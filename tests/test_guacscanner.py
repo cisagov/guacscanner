@@ -201,7 +201,6 @@ def test_stale_linux_instance():
     mock_connection = MagicMock(name="Mock PostgreSQL connection")
     mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
     mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [[{"count": 0}], [{"connection_id": 1}]]
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
 
@@ -323,7 +322,6 @@ def test_stale_windows_instance():
     mock_connection = MagicMock(name="Mock PostgreSQL connection")
     mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
     mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [[{"count": 0}], [{"connection_id": 1}]]
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
 
