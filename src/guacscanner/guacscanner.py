@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--postgres-password=PASSWORD] [--postgres-password-file=FILENAME] [--postgres-username=USERNAME] [--postgres-username-file=FILENAME] [--vpc-id=VPC_ID]
+  guacscanner [--log-level=LEVEL] [--postgres-password=PASSWORD] [--postgres-password-file=FILENAME] [--private-ssh-key=KEY] [--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME] [--postgres-username-file=FILENAME] [--vnc-password=PASSWORD] [--vnc-password-file=FILENAME] [--vnc-username=USERNAME] [--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
   guacscanner (-h | --help)
 
 Options:
@@ -16,10 +16,16 @@ Options:
   --log-level=LEVEL      If specified, then the log level will be set to
                          the specified value.  Valid values are "debug", "info",
                          "warning", "error", and "critical". [default: info]
-  --postgres-password=PASSWORD    If specified then the specified value will be used as the password when connecting to the PostgreSQL database.  Otherwise, the password is read from a local file.
+  --postgres-password=PASSWORD    If specified then the specified value will be used as the password when connecting to the PostgreSQL database.  Otherwise, the password will be read from a local file.
   --postgres-password-file=FILENAME    The file from which the PostgreSQL password will be read. [default: /run/secrets/postgres-password]
-  --postgres-username=USERNAME    If specified then the specified value will be used when connecting to the PostgreSQL database.  Otherwise, the username is read from a local file.
+  --postgres-username=USERNAME    If specified then the specified value will be used when connecting to the PostgreSQL database.  Otherwise, the username will be read from a local file.
   --postgres-username-file=FILENAME    The file from which the PostgreSQL username will be read. [default: /run/secrets/postgres-username]
+  --private-ssh-key=KEY  If specified then the specified value will be used for the private ssh key.  Otherwise, the ssh key will be read from a local file.
+  --private-ssh-key-file=FILENAME  The file from which the private ssh key will be read. [default: /run/secrets/private-ssh-key]
+  --vnc-password=PASSWORD  If specified then the specified value will be used for the VNC password.  Otherwise, the password will be read from a local file.
+  --vnc-password-file=FILENAME  The file from which the VNC password will be read. [default: /run/secrets/vnc-password]
+  --vnc-username=USERNAME  If specified then the specified value will be used for the VNC username.  Otherwise, the username will be read from a local file.
+  --vnc-username-file=FILENAME  The file from which the VNC username will be read. [default: /run/secrets/vnc-username]
   --vpc-id=VPC_ID        If specified then query for EC2 instances created
                          or destroyed in the specified VPC ID.  If not
                          specified then the ID of the VPC in which the host
@@ -126,8 +132,10 @@ def instance_connection_exists(db_connection, connection_name):
         return count != 0
 
 
-def add_instance_connection(db_connection, instance):
-    """Add a connection for the EC2 isntance."""
+def add_instance_connection(
+    db_connection, instance, vnc_username, vnc_password, private_ssh_key
+):
+    """Add a connection for the EC2 instance."""
     logging.debug("Adding connection entry for %s.", instance.id)
     hostname = instance.private_dns_name
     connection_name = get_connection_name(instance)
@@ -161,17 +169,17 @@ def add_instance_connection(db_connection, instance):
                 (
                     connection_id,
                     "sftp-directory",
-                    "/home/{{ vnc_username }}/Documents",
+                    f"/home/{vnc_username}/Documents",
                 ),
                 (
                     connection_id,
                     "sftp-username",
-                    "{{ vnc_username }}",
+                    vnc_username,
                 ),
                 (
                     connection_id,
                     "sftp-private-key",
-                    "{{ vnc_user_private_ssh_key }}",
+                    private_ssh_key,
                 ),
                 (
                     connection_id,
@@ -181,7 +189,7 @@ def add_instance_connection(db_connection, instance):
                 (
                     connection_id,
                     "sftp-root-directory",
-                    "/home/{{ vnc_username }}/",
+                    f"/home/{vnc_username}/",
                 ),
                 (
                     connection_id,
@@ -201,7 +209,7 @@ def add_instance_connection(db_connection, instance):
                 (
                     connection_id,
                     "password",
-                    "{{ vnc_password }}",
+                    vnc_password,
                 ),
                 (
                     connection_id,
@@ -210,6 +218,9 @@ def add_instance_connection(db_connection, instance):
                 ),
             ),
         )
+
+    # Commit all pending transactions to the database
+    db_connection.commit()
 
 
 def remove_instance_connections(db_connection, instance):
@@ -233,6 +244,9 @@ def remove_instance_connections(db_connection, instance):
             )
             cursor.execute(DELETE_CONNECTION_PARAMETERS_QUERY, (connection_id,))
 
+    # Commit all pending transactions to the database
+    db_connection.commit()
+
 
 def get_connection_name(instance):
     """Return the unique connection name for an EC2 instance."""
@@ -240,7 +254,13 @@ def get_connection_name(instance):
 
 
 def process_instance(
-    db_connection, instance, add_instance_states, remove_instance_states
+    db_connection,
+    instance,
+    add_instance_states,
+    remove_instance_states,
+    vnc_username,
+    vnc_password,
+    private_ssh_key,
 ):
     """Add/remove connections for the specified EC2 instance."""
     logging.debug("Examining instance %s.", instance.id)
@@ -255,7 +275,9 @@ def process_instance(
         )
         if not instance_connection_exists(db_connection, connection_name):
             logging.info("Adding a connection for %s.", instance.id)
-            add_instance_connection(db_connection, instance)
+            add_instance_connection(
+                db_connection, instance, vnc_username, vnc_password, private_ssh_key
+            )
         else:
             logging.debug(
                 "Connection for %s already exists in the database.", instance.id
@@ -331,6 +353,27 @@ def main() -> None:
         with open(validated_args["--postgres-username-file"], "r") as file:
             postgres_username = file.read()
 
+    vnc_password = None
+    if "--vnc-password" in validated_args:
+        vnc_password = validated_args["--vnc-password"]
+    else:
+        with open(validated_args["--vnc-password-file"], "r") as file:
+            vnc_password = file.read()
+
+    vnc_username = None
+    if "--vnc-username" in validated_args:
+        vnc_username = validated_args["--vnc-username"]
+    else:
+        with open(validated_args["--vnc-username-file"], "r") as file:
+            vnc_username = file.read()
+
+    private_ssh_key = None
+    if "--private-ssh-key" in validated_args:
+        private_ssh_key = validated_args["--private-ssh-key"]
+    else:
+        with open(validated_args["--private-ssh-key-file"], "r") as file:
+            private_ssh_key = file.read()
+
     db_connection_string = f"postgresql://{postgres_username}:{postgres_password}@{postgres_hostname}:{postgres_port}/{postgres_db_name}"
 
     vpc_id = None
@@ -345,7 +388,13 @@ def main() -> None:
     with psycopg.connect(db_connection_string) as db_connection:
         for instance in ec2.Vpc(vpc_id).instances.all():
             process_instance(
-                db_connection, instance, add_instance_states, remove_instance_states
+                db_connection,
+                instance,
+                add_instance_states,
+                remove_instance_states,
+                vnc_username,
+                vnc_password,
+                private_ssh_key,
             )
 
         # logging.debug(
@@ -360,8 +409,5 @@ def main() -> None:
         #     if m:
         #         instance_id = m.group("id")
         #     ec2.Instance(instance_id)
-
-        # Commit all pending transactions to the database
-        db_connection.commit()
 
     logging.shutdown()
