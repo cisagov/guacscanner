@@ -78,6 +78,7 @@ def test_log_levels(level):
         "argv",
         [
             f"--log-level={level}",
+            "--oneshot",
             "--postgres-password=dummy_db_password",
             "--postgres-username=dummy_db_username",
             "--private-ssh-key=dummy_key",
@@ -151,6 +152,7 @@ def test_new_linux_instance():
         "argv",
         [
             "--log-level=debug",
+            "--oneshot",
             "--postgres-password=dummy_db_password",
             "--postgres-username=dummy_db_username",
             "--private-ssh-key=dummy_key",
@@ -207,6 +209,7 @@ def test_terminated_instance():
         "argv",
         [
             "--log-level=debug",
+            "--oneshot",
             "--postgres-password=dummy_db_password",
             "--postgres-username=dummy_db_username",
             "--private-ssh-key=dummy_key",
@@ -263,6 +266,7 @@ def test_stopped_instance():
         "argv",
         [
             "--log-level=debug",
+            "--oneshot",
             "--postgres-password=dummy_db_password",
             "--postgres-username=dummy_db_username",
             "--private-ssh-key=dummy_key",
@@ -318,6 +322,7 @@ def test_new_windows_instance():
         "argv",
         [
             "--log-level=debug",
+            "--oneshot",
             "--postgres-password=dummy_db_password",
             "--postgres-username=dummy_db_username",
             "--private-ssh-key=dummy_key",

@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
+  guacscanner [--log-level=LEVEL] [--oneshot] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
   guacscanner (-h | --help)
 
 Options:
@@ -16,6 +16,7 @@ Options:
   --log-level=LEVEL      If specified, then the log level will be set to
                          the specified value.  Valid values are "debug", "info",
                          "warning", "error", and "critical". [default: info]
+  --oneshot              If present then the loop that adds (removes) connections for new (terminated) instances will only be run once.
   --postgres-password=PASSWORD    If specified then the specified value will be used as the password when connecting to the PostgreSQL database.  Otherwise, the password will be read from a local file.
   --postgres-password-file=FILENAME    The file from which the PostgreSQL password will be read. [default: /run/secrets/postgres-password]
   --postgres-username=USERNAME    If specified then the specified value will be used when connecting to the PostgreSQL database.  Otherwise, the username will be read from a local file.
@@ -435,6 +436,9 @@ def main() -> None:
     postgres_port = DEFAULT_POSTGRES_PORT
     remove_instance_states = DEFAULT_REMOVE_INSTANCE_STATES
 
+    oneshot = validated_args["--oneshot"]
+    logging.debug("oneshot is %s.", oneshot)
+
     postgres_password = validated_args["--postgres-password"]
     if postgres_password is None:
         with open(validated_args["--postgres-password-file"], "r") as file:
@@ -485,29 +489,37 @@ def main() -> None:
     logging.info("Examining instances in VPC %s.", vpc_id)
 
     instances = ec2.Vpc(vpc_id).instances.all()
+    keep_looping = True
     with psycopg.connect(db_connection_string) as db_connection:
-        for instance in instances:
-            ami = ec2.Image(instance.image_id)
-            # Early exit if this instance is running an AMI that we
-            # want to avoid adding to Guacamole.
-            if any([regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES]):
-                continue
+        while keep_looping:
+            for instance in instances:
+                ami = ec2.Image(instance.image_id)
+                # Early exit if this instance is running an AMI that
+                # we want to avoid adding to Guacamole.
+                if any([regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES]):
+                    continue
 
-            process_instance(
-                db_connection,
-                instance,
-                add_instance_states,
-                remove_instance_states,
-                vnc_username,
-                vnc_password,
-                private_ssh_key,
-                rdp_username,
-                rdp_password,
+                process_instance(
+                    db_connection,
+                    instance,
+                    add_instance_states,
+                    remove_instance_states,
+                    vnc_username,
+                    vnc_password,
+                    private_ssh_key,
+                    rdp_username,
+                    rdp_password,
+                )
+
+            logging.info(
+                "Checking to see if any connections belonging to nonexistent instances are in the database."
             )
+            check_for_ghost_instances(db_connection, instances)
 
-        logging.info(
-            "Checking to see if any connections belonging to nonexistent instances are in the database."
-        )
-        check_for_ghost_instances(db_connection, instances)
+            if oneshot:
+                logging.debug(
+                    "Stopping Guacamole connection update loop because --oneshot is present."
+                )
+                keep_looping = False
 
     logging.shutdown()
