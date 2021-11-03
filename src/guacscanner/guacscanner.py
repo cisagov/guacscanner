@@ -473,11 +473,17 @@ def main() -> None:
     db_connection_string = f"postgresql://{postgres_username}:{postgres_password}@{postgres_hostname}:{postgres_port}/{postgres_db_name}"
 
     vpc_id = validated_args["--vpc-id"]
-    if vpc_id is None:
-        vpc_id = ec2_metadata.vpc_id
-    logging.info("Examining instances in VPC %s.", vpc_id)
 
     ec2 = boto3.resource("ec2", region_name="us-east-1")
+
+    # If no VPC ID was specified on the command line then grab the VPC
+    # ID where this instance resides and use that.
+    if vpc_id is None:
+        instance_id = ec2_metadata.instance_id
+        instance = ec2.Instance(instance_id)
+        vpc_id = instance.VpcId
+    logging.info("Examining instances in VPC %s.", vpc_id)
+
     instances = ec2.Vpc(vpc_id).instances.all()
     with psycopg.connect(db_connection_string) as db_connection:
         for instance in instances:
