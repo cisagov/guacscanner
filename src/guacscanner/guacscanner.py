@@ -69,6 +69,7 @@ DEFAULT_AMI_SKIP_REGEXES = [
     re.compile(r"^samba-.*$"),
 ]
 INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-\d{17})\)$")
+VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 COUNT_QUERY = sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s"
 ).format(
@@ -415,8 +416,7 @@ def main() -> None:
                 And(
                     str,
                     Use(str.lower),
-                    lambda x: re.fullmatch(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$", x)
-                    is not None,
+                    lambda x: VPC_ID_REGEX.match(x) is not None,
                     error="Possible values for --vpc-id are the characters vpc- followed by either 8 or 17 hexadecimal digits.",
                 ),
             ),
