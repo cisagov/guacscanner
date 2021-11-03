@@ -356,8 +356,9 @@ def process_instance(
         )
 
 
-def check_for_ghost_instances(db_connection):
+def check_for_ghost_instances(db_connection, instances):
     """Check to see if any connections belonging to nonexistent instances are in the database."""
+    instance_ids = [instance.id for instance in instances]
     with db_connection.cursor() as cursor:
         cursor.execute(NAMES_QUERY)
         for record in cursor:
@@ -367,12 +368,17 @@ def check_for_ghost_instances(db_connection):
             instance_id = None
             if m:
                 instance_id = m.group("id")
+            else:
+                logging.error(
+                    'Connection name "%s" does not contain a valid instance ID',
+                    connection_name,
+                )
 
-            ec2 = boto3.resource("ec2", region_name="us-east-1")
-            try:
-                ec2.Instance(instance_id)
-            except Exception as e:
-                print(e)
+            if instance_id not in instance_ids:
+                logging.info(
+                    "Connection for %s being removed since that instance no longer exists.",
+                    instance_id,
+                )
                 remove_connection(db_connection, connection_id)
 
     db_connection.commit()
@@ -483,8 +489,9 @@ def main() -> None:
     logging.info("Examining instances in VPC %s.", vpc_id)
 
     ec2 = boto3.resource("ec2", region_name="us-east-1")
+    instances = ec2.Vpc(vpc_id).instances.all()
     with psycopg.connect(db_connection_string) as db_connection:
-        for instance in ec2.Vpc(vpc_id).instances.all():
+        for instance in instances:
             process_instance(
                 db_connection,
                 instance,
@@ -500,6 +507,6 @@ def main() -> None:
         logging.info(
             "Checking to see if any connections belonging to nonexistent instances are in the database."
         )
-        check_for_ghost_instances(db_connection)
+        check_for_ghost_instances(db_connection, instances)
 
     logging.shutdown()
