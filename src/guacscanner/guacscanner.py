@@ -61,6 +61,11 @@ DEFAULT_POSTGRES_PORT = 5432
 DEFAULT_REMOVE_INSTANCE_STATES = [
     "terminated",
 ]
+DEFAULT_AMI_SKIP_REGEXES = [
+    re.compile(r"^guacamole-.*$"),
+    re.compile(r"^samba-.*$"),
+]
+INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-\d{17})\)$")
 COUNT_QUERY = sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s"
 ).format(
@@ -364,7 +369,7 @@ def check_for_ghost_instances(db_connection, instances):
         for record in cursor:
             connection_id = record["connection_id"]
             connection_name = record["connection_name"]
-            m = re.match(r"^.* \((?P<id>i-\d{17})\)$", connection_name)
+            m = INSTANCE_ID_REGEX.match(connection_name)
             instance_id = None
             if m:
                 instance_id = m.group("id")
@@ -476,6 +481,12 @@ def main() -> None:
     instances = ec2.Vpc(vpc_id).instances.all()
     with psycopg.connect(db_connection_string) as db_connection:
         for instance in instances:
+            ami = ec2.Image(instance.image_id)
+            # Early exit if this instance is running an AMI that we
+            # want to avoid adding to Guacamole.
+            if any([regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES]):
+                continue
+
             process_instance(
                 db_connection,
                 instance,
