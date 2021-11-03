@@ -430,61 +430,45 @@ def main() -> None:
     postgres_port = DEFAULT_POSTGRES_PORT
     remove_instance_states = DEFAULT_REMOVE_INSTANCE_STATES
 
-    postgres_password = None
-    if "--postgres-password" in validated_args:
-        postgres_password = validated_args["--postgres-password"]
-    else:
+    postgres_password = validated_args["--postgres-password"]
+    if postgres_password is None:
         with open(validated_args["--postgres-password-file"], "r") as file:
             postgres_password = file.read()
 
-    postgres_username = None
-    if "--postgres-username" in validated_args:
-        postgres_username = validated_args["--postgres-username"]
-    else:
+    postgres_username = validated_args["--postgres-username"]
+    if postgres_username is None:
         with open(validated_args["--postgres-username-file"], "r") as file:
             postgres_username = file.read()
 
-    rdp_password = None
-    if "--rdp-password" in validated_args:
-        rdp_password = validated_args["--rdp-password"]
-    else:
+    rdp_password = validated_args["--rdp-password"]
+    if rdp_password is None:
         with open(validated_args["--rdp-password-file"], "r") as file:
             rdp_password = file.read()
 
-    rdp_username = None
-    if "--rdp-username" in validated_args:
-        rdp_username = validated_args["--rdp-username"]
-    else:
+    rdp_username = validated_args["--rdp-username"]
+    if rdp_username is None:
         with open(validated_args["--rdp-username-file"], "r") as file:
             rdp_username = file.read()
 
-    vnc_password = None
-    if "--vnc-password" in validated_args:
-        vnc_password = validated_args["--vnc-password"]
-    else:
+    vnc_password = validated_args["--vnc-password"]
+    if vnc_password is None:
         with open(validated_args["--vnc-password-file"], "r") as file:
             vnc_password = file.read()
 
-    vnc_username = None
-    if "--vnc-username" in validated_args:
-        vnc_username = validated_args["--vnc-username"]
-    else:
+    vnc_username = validated_args["--vnc-username"]
+    if vnc_username is None:
         with open(validated_args["--vnc-username-file"], "r") as file:
             vnc_username = file.read()
 
-    private_ssh_key = None
-    if "--private-ssh-key" in validated_args:
-        private_ssh_key = validated_args["--private-ssh-key"]
-    else:
+    private_ssh_key = validated_args["--private-ssh-key"]
+    if private_ssh_key is None:
         with open(validated_args["--private-ssh-key-file"], "r") as file:
             private_ssh_key = file.read()
 
     db_connection_string = f"postgresql://{postgres_username}:{postgres_password}@{postgres_hostname}:{postgres_port}/{postgres_db_name}"
 
-    vpc_id = None
-    if "--vpc-id" in validated_args:
-        vpc_id = validated_args["--vpc-id"]
-    else:
+    vpc_id = validated_args["--vpc-id"]
+    if vpc_id is None:
         vpc_id = ec2_metadata.vpc_id
     logging.info("Examining instances in VPC %s.", vpc_id)
 
