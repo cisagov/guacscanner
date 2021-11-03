@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--oneshot] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
+  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
   guacscanner (-h | --help)
 
 Options:
@@ -27,6 +27,7 @@ Options:
   --rdp-password-file=FILENAME  The file from which the RDP password will be read. [default: /run/secrets/rdp-password]
   --rdp-username=USERNAME  If specified then the specified value will be used for the RDP username.  Otherwise, the username will be read from a local file.
   --rdp-username-file=FILENAME  The file from which the RDP username will be read. [default: /run/secrets/rdp-username]
+  --sleep=SECONDS  Sleep for the specified number of seconds between executions of the Guacamole connection update loop. [default: 60]
   --vnc-password=PASSWORD  If specified then the specified value will be used for the VNC password.  Otherwise, the password will be read from a local file.
   --vnc-password-file=FILENAME  The file from which the VNC password will be read. [default: /run/secrets/vnc-password]
   --vnc-username=USERNAME  If specified then the specified value will be used for the VNC username.  Otherwise, the username will be read from a local file.
@@ -42,6 +43,7 @@ Options:
 import logging
 import re
 import sys
+import time
 
 # Third-Party Libraries
 import boto3
@@ -404,6 +406,10 @@ def main() -> None:
                 error="Possible values for --log-level are "
                 + "debug, info, warning, error, and critical.",
             ),
+            "--sleep": And(
+                Use(float),
+                error="Value for --sleep must be parseable as a floating point number.",
+            ),
             Optional("--vpc-id"): Or(
                 None,
                 And(
@@ -411,7 +417,7 @@ def main() -> None:
                     Use(str.lower),
                     lambda x: re.fullmatch(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$", x)
                     is not None,
-                    error="Possible values for --vpc-id are the characters vpc- followed by 17 hexadecimal digits.",
+                    error="Possible values for --vpc-id are the characters vpc- followed by either 8 or 17 hexadecimal digits.",
                 ),
             ),
             str: object,  # Don't care about other keys, if any
@@ -521,5 +527,8 @@ def main() -> None:
                     "Stopping Guacamole connection update loop because --oneshot is present."
                 )
                 keep_looping = False
+                continue
+
+            time.sleep(validated_args["--sleep"])
 
     logging.shutdown()
