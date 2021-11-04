@@ -121,7 +121,7 @@ DELETE_CONNECTION_PARAMETERS_QUERY = sql.SQL(
     """DELETE FROM {table} WHERE {id_field} = %s;"""
 ).format(
     table=sql.Identifier("guacamole_connection_parameter"),
-    id_field=sql.Identifier("id"),
+    id_field=sql.Identifier("connection_id"),
 )
 
 
