@@ -499,7 +499,9 @@ def main() -> None:
     keep_looping = True
     while keep_looping:
         try:
-            with psycopg.connect(db_connection_string) as db_connection:
+            with psycopg.connect(
+                db_connection_string, row_factory=psycopg.rows.dict_row
+            ) as db_connection:
                 for instance in instances:
                     ami = ec2.Image(instance.image_id)
                     # Early exit if this instance is running an AMI
