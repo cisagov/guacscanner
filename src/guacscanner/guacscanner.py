@@ -481,7 +481,7 @@ def main() -> None:
         with open(validated_args["--private-ssh-key-file"], "r") as file:
             private_ssh_key = file.read()
 
-    db_connection_string = f"postgresql://{postgres_username}:{postgres_password}@{postgres_hostname}:{postgres_port}/{postgres_db_name}"
+    db_connection_string = f"user={postgres_username} password={postgres_password} host={postgres_hostname} port={postgres_port} dbname={postgres_db_name}"
     logging.debug("DB connection string is %s.", db_connection_string)
 
     vpc_id = validated_args["--vpc-id"]
