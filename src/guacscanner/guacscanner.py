@@ -92,7 +92,7 @@ INSERT_CONNECTION_QUERY = sql.SQL(
     {name_field}, {protocol_field}, {max_connections_field},
     {max_connections_per_user_field}, {proxy_port_field}, {proxy_hostname_field},
     {proxy_encryption_method_field})
-    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id;"""
+    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING connection_id;"""
 ).format(
     table=sql.Identifier("guacamole_connection"),
     name_field=sql.Identifier("connection_name"),
