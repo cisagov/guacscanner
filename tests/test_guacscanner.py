@@ -137,7 +137,15 @@ def test_new_linux_instance():
     )
     ami = amis["Images"][0]
     ami_id = ami["ImageId"]
-    ec2.run_instances(ImageId=ami_id, SubnetId=subnet_id, MaxCount=1, MinCount=1)
+    ec2.run_instances(
+        ImageId=ami_id,
+        SubnetId=subnet_id,
+        MaxCount=1,
+        MinCount=1,
+        TagSpecifications=[
+            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Linux"}]}
+        ],
+    )
 
     # Mock the PostgreSQL database connection
     mock_connection = MagicMock(name="Mock PostgreSQL connection")
@@ -192,7 +200,13 @@ def test_terminated_instance():
     ami = amis["Images"][0]
     ami_id = ami["ImageId"]
     instances = ec2.run_instances(
-        ImageId=ami_id, SubnetId=subnet_id, MaxCount=1, MinCount=1
+        ImageId=ami_id,
+        SubnetId=subnet_id,
+        MaxCount=1,
+        MinCount=1,
+        TagSpecifications=[
+            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Linux"}]}
+        ],
     )
     instance_id = instances["Instances"][0]["InstanceId"]
     ec2.terminate_instances(InstanceIds=[instance_id])
@@ -249,7 +263,13 @@ def test_stopped_instance():
     ami = amis["Images"][0]
     ami_id = ami["ImageId"]
     instances = ec2.run_instances(
-        ImageId=ami_id, SubnetId=subnet_id, MaxCount=1, MinCount=1
+        ImageId=ami_id,
+        SubnetId=subnet_id,
+        MaxCount=1,
+        MinCount=1,
+        TagSpecifications=[
+            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Linux"}]}
+        ],
     )
     instance_id = instances["Instances"][0]["InstanceId"]
     ec2.stop_instances(InstanceIds=[instance_id])
@@ -307,7 +327,15 @@ def test_new_windows_instance():
     )
     ami = amis["Images"][0]
     ami_id = ami["ImageId"]
-    ec2.run_instances(ImageId=ami_id, SubnetId=subnet_id, MaxCount=1, MinCount=1)
+    ec2.run_instances(
+        ImageId=ami_id,
+        SubnetId=subnet_id,
+        MaxCount=1,
+        MinCount=1,
+        TagSpecifications=[
+            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Windows"}]}
+        ],
+    )
 
     # Mock the PostgreSQL database connection
     mock_connection = MagicMock(name="Mock PostgreSQL connection")

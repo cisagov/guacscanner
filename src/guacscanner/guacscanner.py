@@ -309,7 +309,8 @@ def remove_instance_connections(db_connection, instance):
 
 def get_connection_name(instance):
     """Return the unique connection name for an EC2 instance."""
-    return f"{instance.private_dns_name} ({instance.id})"
+    name = [tag["Value"] for tag in instance.tags if tag["Key"] == "Name"][0]
+    return f"{name} ({instance.id})"
 
 
 def process_instance(
