@@ -481,6 +481,7 @@ def main() -> None:
             private_ssh_key = file.read()
 
     db_connection_string = f"postgresql://{postgres_username}:{postgres_password}@{postgres_hostname}:{postgres_port}/{postgres_db_name}"
+    logging.debug("DB connection string is %s.", db_connection_string)
 
     vpc_id = validated_args["--vpc-id"]
 
@@ -496,39 +497,47 @@ def main() -> None:
 
     instances = ec2.Vpc(vpc_id).instances.all()
     keep_looping = True
-    with psycopg.connect(db_connection_string) as db_connection:
-        while keep_looping:
-            for instance in instances:
-                ami = ec2.Image(instance.image_id)
-                # Early exit if this instance is running an AMI that
-                # we want to avoid adding to Guacamole.
-                if any([regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES]):
+    while keep_looping:
+        try:
+            with psycopg.connect(db_connection_string) as db_connection:
+                for instance in instances:
+                    ami = ec2.Image(instance.image_id)
+                    # Early exit if this instance is running an AMI
+                    # that we want to avoid adding to Guacamole.
+                    if any(
+                        [regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES]
+                    ):
+                        continue
+
+                    process_instance(
+                        db_connection,
+                        instance,
+                        add_instance_states,
+                        remove_instance_states,
+                        vnc_username,
+                        vnc_password,
+                        private_ssh_key,
+                        rdp_username,
+                        rdp_password,
+                    )
+
+                logging.info(
+                    "Checking to see if any connections belonging to nonexistent instances are in the database."
+                )
+                check_for_ghost_instances(db_connection, instances)
+
+                if oneshot:
+                    logging.debug(
+                        "Stopping Guacamole connection update loop because --oneshot is present."
+                    )
+                    keep_looping = False
                     continue
-
-                process_instance(
-                    db_connection,
-                    instance,
-                    add_instance_states,
-                    remove_instance_states,
-                    vnc_username,
-                    vnc_password,
-                    private_ssh_key,
-                    rdp_username,
-                    rdp_password,
-                )
-
-            logging.info(
-                "Checking to see if any connections belonging to nonexistent instances are in the database."
+        except psycopg.OperationalError:
+            logging.exception(
+                "Unable to connect to the PostgreSQL database backending Guacamole."
             )
-            check_for_ghost_instances(db_connection, instances)
+            continue
 
-            if oneshot:
-                logging.debug(
-                    "Stopping Guacamole connection update loop because --oneshot is present."
-                )
-                keep_looping = False
-                continue
-
-            time.sleep(validated_args["--sleep"])
+        time.sleep(validated_args["--sleep"])
 
     logging.shutdown()
