@@ -335,7 +335,6 @@ def process_instance(
             instance.id,
             state,
         )
-        db_connection.cursor()
         if not instance_connection_exists(db_connection, connection_name):
             logging.info("Adding a connection for %s.", instance.id)
             add_instance_connection(
