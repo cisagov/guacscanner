@@ -148,10 +148,12 @@ def test_new_linux_instance():
     )
 
     # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(name="Mock PostgreSQL connection")
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
+    mock_connection = MagicMock(
+        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
+    )
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
     mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [[{"count": 0}], [{"connection_id": 1}]]
+    mock_cursor.fetchone.side_effect = [{"count": 0}, {"connection_id": 1}]
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
 
@@ -212,8 +214,10 @@ def test_terminated_instance():
     ec2.terminate_instances(InstanceIds=[instance_id])
 
     # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(name="Mock PostgreSQL connection")
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
+    mock_connection = MagicMock(
+        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
+    )
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
     mock_cursor.__enter__.return_value = mock_cursor
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
@@ -275,8 +279,10 @@ def test_stopped_instance():
     ec2.stop_instances(InstanceIds=[instance_id])
 
     # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(name="Mock PostgreSQL connection")
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
+    mock_connection = MagicMock(
+        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
+    )
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
     mock_cursor.__enter__.return_value = mock_cursor
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
@@ -338,10 +344,12 @@ def test_new_windows_instance():
     )
 
     # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(name="Mock PostgreSQL connection")
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor")
+    mock_connection = MagicMock(
+        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
+    )
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
     mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [[{"count": 0}], [{"connection_id": 1}]]
+    mock_cursor.fetchone.side_effect = [{"count": 0}, {"connection_id": 1}]
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
 
