@@ -68,7 +68,7 @@ DEFAULT_AMI_SKIP_REGEXES = [
     re.compile(r"^guacamole-.*$"),
     re.compile(r"^samba-.*$"),
 ]
-INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-\d{17})\)$")
+INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-[0-9a-f]{17})\)$")
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 COUNT_QUERY = sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s"
