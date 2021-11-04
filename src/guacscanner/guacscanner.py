@@ -132,7 +132,7 @@ def instance_connection_exists(db_connection, connection_name):
             connection_name,
         )
         cursor.execute(COUNT_QUERY, (connection_name,))
-        count = cursor.fetchone()[0]["count"]
+        count = cursor.fetchone()["count"]
         if count != 0:
             logging.debug(
                 "A connection named %s exists in the database.", connection_name
@@ -180,7 +180,7 @@ def add_instance_connection(
                 "NONE",
             ),
         )
-        connection_id = cursor.fetchone()[0]["connection_id"]
+        connection_id = cursor.fetchone()["connection_id"]
 
         guac_conn_params = (
             (
