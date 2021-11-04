@@ -537,7 +537,6 @@ def main() -> None:
             logging.exception(
                 "Unable to connect to the PostgreSQL database backending Guacamole."
             )
-            continue
 
         time.sleep(validated_args["--sleep"])
 
