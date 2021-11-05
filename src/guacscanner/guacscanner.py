@@ -76,9 +76,9 @@ DEFAULT_AMI_SKIP_REGEXES = [
 INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-[0-9a-f]{17})\)$")
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 
-# Determine if we can use f-strings instead of .format() for these
-# queries.  Also define the sql.Identifier() variables separately so
-# that they can be reused where that is possible.  See
+# TODO: Determine if we can use f-strings instead of .format() for
+# these queries.  Also define the sql.Identifier() variables
+# separately so that they can be reused where that is possible.  See
 # cisagov/guacscanner#3 for more details.
 
 # The PostgreSQL queries used for adding and removing connections
@@ -671,6 +671,14 @@ def main() -> None:
                 db_connection_string, row_factory=psycopg.rows.dict_row
             ) as db_connection:
                 # Create guacuser if it doesn't already exist
+                #
+                # TODO: Figure out a way to make this cleaner.  We
+                # don't want to hardcode the guacuser name, and we
+                # want to allow the user to specify a list of users
+                # that should be created if they don't exist and given
+                # access to use the connections created by
+                # guacscanner.  See cisagov/guacscanner#4 for more
+                # details.
                 if guacuser_id is None:
                     # We haven't initialized guacuser_id yet, so let's
                     # do it now.
