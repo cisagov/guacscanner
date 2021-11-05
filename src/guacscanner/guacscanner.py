@@ -40,6 +40,7 @@ Options:
 
 
 # Standard Python Libraries
+import datetime
 import logging
 import re
 import sys
@@ -55,6 +56,8 @@ from schema import And, Optional, Or, Schema, SchemaError, Use
 
 from ._version import __version__
 
+# TODO: Create command line options with defaults for these variables.
+# See cisagov/guacscanner#2 for more details.
 DEFAULT_ADD_INSTANCE_STATES = [
     "running",
 ]
@@ -68,8 +71,17 @@ DEFAULT_AMI_SKIP_REGEXES = [
     re.compile(r"^guacamole-.*$"),
     re.compile(r"^samba-.*$"),
 ]
+
+# Some precompiled regexes
 INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-[0-9a-f]{17})\)$")
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
+
+# Determine if we can use f-strings instead of .format() for these
+# queries.  Also define the sql.Identifier() variables separately so
+# that they can be reused where that is possible.  See
+# cisagov/guacscanner#3 for more details.
+
+# The PostgreSQL queries used for adding and removing connections
 COUNT_QUERY = sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s"
 ).format(
@@ -127,6 +139,128 @@ DELETE_CONNECTION_PARAMETERS_QUERY = sql.SQL(
     id_field=sql.Identifier("connection_id"),
 )
 
+# The PostgreSQL queries used for adding and removing users
+ENTITY_COUNT_QUERY = sql.SQL(
+    "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s AND {type_field} = %s"
+).format(
+    id_field=sql.Identifier("entity_id"),
+    table=sql.Identifier("guacamole_entity"),
+    name_field=sql.Identifier("name"),
+    type_field=sql.Identifier("type"),
+)
+ENTITY_ID_QUERY = sql.SQL(
+    "SELECT {id_field} FROM {table} WHERE {name_field} = %s AND {type_field} = %s"
+).format(
+    id_field=sql.Identifier("entity_id"),
+    table=sql.Identifier("guacamole_entity"),
+    name_field=sql.Identifier("name"),
+    type_field=sql.Identifier("type"),
+)
+INSERT_ENTITY_QUERY = sql.SQL(
+    """INSERT INTO {table} (
+    {name_field}, {type_field})
+    VALUES (%s, %s) RETURNING {id_field};"""
+).format(
+    table=sql.Identifier("guacamole_entity"),
+    name_field=sql.Identifier("name"),
+    type_field=sql.Identifier("type"),
+    id_field=sql.Identifier("entity_id"),
+)
+INSERT_USER_QUERY = sql.SQL(
+    """INSERT INTO {table} (
+    {id_field}, {hash_field}, {salt_field}, {date_field})
+    VALUES (%s, %s, %s, %s);"""
+).format(
+    table=sql.Identifier("guacamole_user"),
+    id_field=sql.Identifier("entity_id"),
+    hash_field=sql.Identifier("password_hash"),
+    salt_field=sql.Identifier("password_salt"),
+    date_field=sql.Identifier("password_date"),
+)
+# The PostgreSQL queries used to add and remove connection
+# permissions
+INSERT_CONNECTION_PERMISSION_QUERY = sql.SQL(
+    """INSERT INTO {table} (
+    {entity_id_field}, {connection_id_field}, {permission_field})
+    VALUES (%s, %s, %s);"""
+).format(
+    table=sql.Identifier("guacamole_connection_permission"),
+    entity_id_field=sql.Identifier("entity_id"),
+    connection_id_field=sql.Identifier("connection_id"),
+    permission_field=sql.Identifier("permission"),
+)
+DELETE_CONNECTION_PERMISSIONS_QUERY = sql.SQL(
+    """DELETE FROM {table} WHERE {connection_id_field} = %s;"""
+).format(
+    table=sql.Identifier("guacamole_connection_permission"),
+    connection_id_field=sql.Identifier("connection_id"),
+)
+
+
+def entity_exists(db_connection, entity_name):
+    """Return a boolean indicating whether an entity with the specified name exists."""
+    with db_connection.cursor() as cursor:
+        logging.debug(
+            "Checking to see if an entity named %s exists in the database.",
+            entity_name,
+        )
+        cursor.execute(ENTITY_COUNT_QUERY, (entity_name,))
+        count = cursor.fetchone()["count"]
+        if count != 0:
+            logging.debug("An entity named %s exists in the database.", entity_name)
+        else:
+            logging.debug("No entity named %s exists in the database.", entity_name)
+
+        return count != 0
+
+
+def get_entity_id(db_connection, entity_name):
+    """Remove all connections corresponding to the EC2 instance."""
+    logging.debug("Looking for entity ID for %s.", entity_name)
+    with db_connection.cursor() as cursor:
+        logging.debug(
+            "Checking to see if any entities named %s exist in the database.",
+            entity_name,
+        )
+        cursor.execute(ENTITY_ID_QUERY, (entity_name,))
+
+        # Note that we are assuming there is only a single match.
+        return cursor.fetchone()["entity_id"]
+
+
+def add_user(db_connection, username):
+    """Add a user, returning its corresponding entity ID."""
+    logging.debug("Adding user entry for %s.", username)
+    entity_id = None
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            INSERT_ENTITY_QUERY,
+            (
+                username,
+                "USER",
+            ),
+        )
+        entity_id = cursor.fetchone()["entity_id"]
+        cursor.execute(
+            INSERT_USER_QUERY,
+            (
+                entity_id,
+                # guacadmin
+                bytes.fromhex(
+                    "CA458A7D494E3BE824F5E1E175A1556C0F8EEF2C2D7DF3633BEC4A29C4411960"
+                ),
+                bytes.fromhex(
+                    "FE24ADC5E11E2B25288D1704ABE67A79E342ECC26064CE69C5B3177795A82264"
+                ),
+                datetime.datetime.now(),
+            ),
+        )
+
+    # Commit all pending transactions to the database
+    db_connection.commit()
+
+    return entity_id
+
 
 def instance_connection_exists(db_connection, connection_name):
     """Return a boolean indicating whether a connection with the specified name exists."""
@@ -157,6 +291,7 @@ def add_instance_connection(
     private_ssh_key,
     rdp_username,
     rdp_password,
+    entity_id,
 ):
     """Add a connection for the EC2 instance."""
     logging.debug("Adding connection entry for %s.", instance.id)
@@ -278,6 +413,19 @@ def add_instance_connection(
         )
         cursor.executemany(INSERT_CONNECTION_PARAMETER_QUERY, guac_conn_params)
 
+        logging.debug(
+            "Adding connection permission entries for connection named %s.",
+            connection_name,
+        )
+        cursor.execute(
+            INSERT_CONNECTION_PERMISSION_QUERY,
+            (
+                entity_id,
+                connection_id,
+                "READ",
+            ),
+        )
+
     # Commit all pending transactions to the database
     db_connection.commit()
 
@@ -290,6 +438,9 @@ def remove_connection(db_connection, connection_id):
 
         logging.debug("Removing connection parameter entries for %s.", connection_id)
         cursor.execute(DELETE_CONNECTION_PARAMETERS_QUERY, (connection_id,))
+
+        logging.debug("Removing connection permission entries for %s.", connection_id)
+        cursor.execute(DELETE_CONNECTION_PERMISSIONS_QUERY, (connection_id,))
 
 
 def remove_instance_connections(db_connection, instance):
@@ -327,6 +478,7 @@ def process_instance(
     private_ssh_key,
     rdp_username,
     rdp_password,
+    entity_id,
 ):
     """Add/remove connections for the specified EC2 instance."""
     logging.debug("Examining instance %s.", instance.id)
@@ -349,6 +501,7 @@ def process_instance(
                 private_ssh_key,
                 rdp_username,
                 rdp_password,
+                entity_id,
             )
         else:
             logging.debug(
@@ -489,6 +642,16 @@ def main() -> None:
 
     vpc_id = validated_args["--vpc-id"]
 
+    # Create guac user if it doesn't already exist
+    guacuser_id = None
+    with psycopg.connect(
+        db_connection_string, row_factory=psycopg.rows.dict_row
+    ) as db_connection:
+        if not entity_exists(db_connection, "guacuser"):
+            guacuser_id = add_user(db_connection, "guacuser")
+        else:
+            guacuser_id = get_entity_id(db_connection, "guacuser")
+
     ec2 = boto3.resource("ec2", region_name="us-east-1")
 
     # If no VPC ID was specified on the command line then grab the VPC
@@ -525,6 +688,7 @@ def main() -> None:
                         private_ssh_key,
                         rdp_username,
                         rdp_password,
+                        guacuser_id,
                     )
 
                 logging.info(
