@@ -122,6 +122,104 @@ def test_bad_log_level():
 
 
 @mock_ec2
+def test_addition_of_guacuser():
+    """Verify that adding the guacuser works as expected."""
+    # Create and VPC
+    ec2 = boto3.client("ec2", "us-east-1")
+    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+    vpc_id = vpc["Vpc"]["VpcId"]
+
+    # Mock the PostgreSQL database connection
+    mock_connection = MagicMock(
+        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
+    )
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.side_effect = [
+        # Checking to see if guacuser exists and then adding it
+        {"count": 0},
+        {"entity_id": 1},
+    ]
+    mock_connection.__enter__.return_value = mock_connection
+    mock_connection.cursor.return_value = mock_cursor
+
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "--log-level=debug",
+            "--oneshot",
+            "--postgres-password=dummy_db_password",
+            "--postgres-username=dummy_db_username",
+            "--private-ssh-key=dummy_key",
+            "--rdp-password=dummy_rdp_password",
+            "--rdp-username=dummy_rdp_username",
+            "--vnc-password=dummy_vnc_password",
+            "--vnc-username=dummy_vnc_username",
+            f"--vpc-id={vpc_id}",
+        ],
+    ):
+        with patch.object(
+            psycopg, "connect", return_value=mock_connection
+        ) as mock_connect:
+            guacscanner.guacscanner.main()
+            mock_connect.assert_called_once()
+            mock_connection.cursor.assert_called()
+            mock_connection.commit.assert_called()
+            mock_cursor.fetchone.assert_called()
+            mock_cursor.execute.assert_called()
+
+
+@mock_ec2
+def test_guacuser_already_exists():
+    """Verify that the case where the guacuser already exists works as expected."""
+    # Create and VPC
+    ec2 = boto3.client("ec2", "us-east-1")
+    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+    vpc_id = vpc["Vpc"]["VpcId"]
+
+    # Mock the PostgreSQL database connection
+    mock_connection = MagicMock(
+        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
+    )
+    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
+    mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.side_effect = [
+        # Checking to see if guacuser exists and then fetching its ID
+        {"count": 1},
+        {"entity_id": 1},
+    ]
+    mock_connection.__enter__.return_value = mock_connection
+    mock_connection.cursor.return_value = mock_cursor
+
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "--log-level=debug",
+            "--oneshot",
+            "--postgres-password=dummy_db_password",
+            "--postgres-username=dummy_db_username",
+            "--private-ssh-key=dummy_key",
+            "--rdp-password=dummy_rdp_password",
+            "--rdp-username=dummy_rdp_username",
+            "--vnc-password=dummy_vnc_password",
+            "--vnc-username=dummy_vnc_username",
+            f"--vpc-id={vpc_id}",
+        ],
+    ):
+        with patch.object(
+            psycopg, "connect", return_value=mock_connection
+        ) as mock_connect:
+            guacscanner.guacscanner.main()
+            mock_connect.assert_called_once()
+            mock_connection.cursor.assert_called()
+            mock_connection.commit.assert_called()
+            mock_cursor.fetchone.assert_called()
+            mock_cursor.execute.assert_called()
+
+
+@mock_ec2
 def test_new_linux_instance():
     """Verify that adding a new Linux instance works as expected."""
     # Create and populate a VPC with an EC2 instance
@@ -153,7 +251,14 @@ def test_new_linux_instance():
     )
     mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
     mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [{"count": 0}, {"connection_id": 1}]
+    mock_cursor.fetchone.side_effect = [
+        # Checking to see if guacuser exists and then adding it
+        {"count": 0},
+        {"entity_id": 1},
+        # Checking to see if the connection exists and then adding it
+        {"count": 0},
+        {"connection_id": 1},
+    ]
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
 
@@ -219,6 +324,11 @@ def test_terminated_instance():
     )
     mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
     mock_cursor.__enter__.return_value = mock_cursor
+    mock_cursor.fetchone.side_effect = [
+        # Checking to see if guacuser exists and then adding it
+        {"count": 0},
+        {"entity_id": 1},
+    ]
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
 
@@ -245,7 +355,7 @@ def test_terminated_instance():
             mock_connect.assert_called_once()
             mock_connection.cursor.assert_called()
             mock_connection.commit.assert_called()
-            mock_cursor.fetchone.assert_not_called()
+            mock_cursor.fetchone.assert_called()
             mock_cursor.execute.assert_called()
             mock_cursor.executemany.assert_not_called()
 
@@ -349,7 +459,14 @@ def test_new_windows_instance():
     )
     mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
     mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [{"count": 0}, {"connection_id": 1}]
+    mock_cursor.fetchone.side_effect = [
+        # Checking to see if guacuser exists and then adding it
+        {"count": 0},
+        {"entity_id": 1},
+        # Checking to see if the connection exists and then adding it
+        {"count": 0},
+        {"connection_id": 1},
+    ]
     mock_connection.__enter__.return_value = mock_connection
     mock_connection.cursor.return_value = mock_cursor
 
