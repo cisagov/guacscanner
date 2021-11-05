@@ -75,6 +75,7 @@ DEFAULT_REMOVE_INSTANCE_STATES = [
 ]
 DEFAULT_AMI_SKIP_REGEXES = [
     re.compile(r"^guacamole-.*$"),
+    re.compile(r"^nessus-.*$"),
     re.compile(r"^samba-.*$"),
 ]
 
