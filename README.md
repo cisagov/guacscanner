@@ -6,7 +6,7 @@
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/cisagov/guacscanner.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/cisagov/guacscanner/context:python)
 [![Known Vulnerabilities](https://snyk.io/test/github/cisagov/guacscanner/develop/badge.svg)](https://snyk.io/test/github/cisagov/guacscanner)
 
-This project is a Python utility that continually scans the instances
+This project is a Python utility that continually scans the EC2 instances
 in an AWS VPC and adds/removes Guacamole connections in the underlying
 PostgreSQL database accordingly.
 
