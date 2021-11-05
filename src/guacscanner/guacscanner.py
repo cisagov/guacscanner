@@ -56,6 +56,12 @@ from schema import And, Optional, Or, Schema, SchemaError, Use
 
 from ._version import __version__
 
+# TODO: Add exception handling for all the database accesses and
+# wherever else it is appropriate.  guacscanner currently just bombs
+# out if an exception is thrown, but it would probably make more sense
+# to print an error message and keep looping, keepin' the train
+# a-chooglin'.  See cisagov/guacscanner#5 for more details.
+
 # TODO: Create command line options with defaults for these variables.
 # See cisagov/guacscanner#2 for more details.
 DEFAULT_ADD_INSTANCE_STATES = [
