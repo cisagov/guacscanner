@@ -3,7 +3,6 @@
 # although this import is not directly used, it populates the value
 # package_name.__version__, which is used to get version information about this
 # Python package.
-# from .guacscanner import example_div
 from . import guacscanner  # noqa: F401
 from ._version import __version__  # noqa: F401
 
