@@ -698,9 +698,21 @@ def main() -> None:
                     ami = ec2.Image(instance.image_id)
                     # Early exit if this instance is running an AMI
                     # that we want to avoid adding to Guacamole.
-                    if any(
-                        [regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES]
-                    ):
+                    try:
+                        ami_matches = [
+                            regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES
+                        ]
+                    except AttributeError:
+                        # I'm not sure why this happens, but this
+                        # should keep things moving when it does.  It
+                        # is a temporary problem that eventually sorts
+                        # itself out.  I think it only happens while
+                        # instances are being created or destroyed.
+                        logging.exception(
+                            "Unable to determine if instance is running an AMI that would cause it to be skipped."
+                        )
+                        continue
+                    if any(ami_matches):
                         continue
 
                     process_instance(
