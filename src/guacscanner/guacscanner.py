@@ -116,7 +116,10 @@ INSERT_CONNECTION_PARAMETER_QUERY = sql.SQL(
 )
 DELETE_CONNECTIONS_QUERY = sql.SQL(
     """DELETE FROM {table} WHERE {id_field} = %s;"""
-).format(table=sql.Identifier("guacamole_connection"), id_field=sql.Identifier("id"))
+).format(
+    table=sql.Identifier("guacamole_connection"),
+    id_field=sql.Identifier("connection_id"),
+)
 DELETE_CONNECTION_PARAMETERS_QUERY = sql.SQL(
     """DELETE FROM {table} WHERE {id_field} = %s;"""
 ).format(
