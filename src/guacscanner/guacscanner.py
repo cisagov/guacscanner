@@ -642,16 +642,6 @@ def main() -> None:
 
     vpc_id = validated_args["--vpc-id"]
 
-    # Create guac user if it doesn't already exist
-    guacuser_id = None
-    with psycopg.connect(
-        db_connection_string, row_factory=psycopg.rows.dict_row
-    ) as db_connection:
-        if not entity_exists(db_connection, "guacuser"):
-            guacuser_id = add_user(db_connection, "guacuser")
-        else:
-            guacuser_id = get_entity_id(db_connection, "guacuser")
-
     ec2 = boto3.resource("ec2", region_name="us-east-1")
 
     # If no VPC ID was specified on the command line then grab the VPC
@@ -669,6 +659,13 @@ def main() -> None:
             with psycopg.connect(
                 db_connection_string, row_factory=psycopg.rows.dict_row
             ) as db_connection:
+                # Create guacuser if it doesn't already exist
+                guacuser_id = None
+                if not entity_exists(db_connection, "guacuser"):
+                    guacuser_id = add_user(db_connection, "guacuser")
+                else:
+                    guacuser_id = get_entity_id(db_connection, "guacuser")
+
                 for instance in instances:
                     ami = ec2.Image(instance.image_id)
                     # Early exit if this instance is running an AMI
