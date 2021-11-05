@@ -7,4 +7,16 @@
 from . import guacscanner  # noqa: F401
 from ._version import __version__  # noqa: F401
 
-# __all__ = ["example_div"]
+__all__ = [
+    "add_instance_connection",
+    "add_user",
+    "check_for_ghost_instances",
+    "entity_exists",
+    "get_connection_name",
+    "get_entity_id",
+    "instance_connection_exists",
+    "main",
+    "process_instance",
+    "remove_connection",
+    "remove_instance_connection",
+]
