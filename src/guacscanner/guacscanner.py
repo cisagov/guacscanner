@@ -197,32 +197,42 @@ DELETE_CONNECTION_PERMISSIONS_QUERY = sql.SQL(
 )
 
 
-def entity_exists(db_connection, entity_name):
-    """Return a boolean indicating whether an entity with the specified name exists."""
+def entity_exists(db_connection, entity_name, entity_type):
+    """Return a boolean indicating whether an entity with the specified name and type exists."""
     with db_connection.cursor() as cursor:
         logging.debug(
-            "Checking to see if an entity named %s exists in the database.",
+            "Checking to see if an entity named %s of type %s exists in the database.",
             entity_name,
+            entity_type,
         )
-        cursor.execute(ENTITY_COUNT_QUERY, (entity_name,))
+        cursor.execute(ENTITY_COUNT_QUERY, (entity_name, entity_type))
         count = cursor.fetchone()["count"]
         if count != 0:
-            logging.debug("An entity named %s exists in the database.", entity_name)
+            logging.debug(
+                "An entity named %s of type %s exists in the database.",
+                entity_name,
+                entity_type,
+            )
         else:
-            logging.debug("No entity named %s exists in the database.", entity_name)
+            logging.debug(
+                "No entity named %s of type %s exists in the database.",
+                entity_name,
+                entity_type,
+            )
 
         return count != 0
 
 
-def get_entity_id(db_connection, entity_name):
-    """Remove all connections corresponding to the EC2 instance."""
-    logging.debug("Looking for entity ID for %s.", entity_name)
+def get_entity_id(db_connection, entity_name, entity_type):
+    """Return the ID corresponding to the entity with the specified name and type."""
+    logging.debug("Looking for entity ID for %s of type %s.", entity_name, entity_type)
     with db_connection.cursor() as cursor:
         logging.debug(
-            "Checking to see if any entities named %s exist in the database.",
+            "Checking to see if any entity named %s of type %s exists in the database.",
             entity_name,
+            entity_type,
         )
-        cursor.execute(ENTITY_ID_QUERY, (entity_name,))
+        cursor.execute(ENTITY_ID_QUERY, (entity_name, entity_type))
 
         # Note that we are assuming there is only a single match.
         return cursor.fetchone()["entity_id"]
@@ -664,10 +674,10 @@ def main() -> None:
                 if guacuser_id is None:
                     # We haven't initialized guacuser_id yet, so let's
                     # do it now.
-                    if not entity_exists(db_connection, "guacuser"):
+                    if not entity_exists(db_connection, "guacuser", "USER"):
                         guacuser_id = add_user(db_connection, "guacuser")
                     else:
-                        guacuser_id = get_entity_id(db_connection, "guacuser")
+                        guacuser_id = get_entity_id(db_connection, "guacuser", "USER")
 
                 for instance in instances:
                     ami = ec2.Image(instance.image_id)
