@@ -654,17 +654,20 @@ def main() -> None:
 
     instances = ec2.Vpc(vpc_id).instances.all()
     keep_looping = True
+    guacuser_id = None
     while keep_looping:
         try:
             with psycopg.connect(
                 db_connection_string, row_factory=psycopg.rows.dict_row
             ) as db_connection:
                 # Create guacuser if it doesn't already exist
-                guacuser_id = None
-                if not entity_exists(db_connection, "guacuser"):
-                    guacuser_id = add_user(db_connection, "guacuser")
-                else:
-                    guacuser_id = get_entity_id(db_connection, "guacuser")
+                if guacuser_id is None:
+                    # We haven't initialized guacuser_id yet, so let's
+                    # do it now.
+                    if not entity_exists(db_connection, "guacuser"):
+                        guacuser_id = add_user(db_connection, "guacuser")
+                    else:
+                        guacuser_id = get_entity_id(db_connection, "guacuser")
 
                 for instance in instances:
                     ami = ec2.Image(instance.image_id)
