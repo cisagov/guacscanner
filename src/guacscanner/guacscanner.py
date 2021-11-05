@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
+  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
   guacscanner (-h | --help)
 
 Options:
