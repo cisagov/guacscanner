@@ -21,8 +21,8 @@ Options:
   --postgres-password-file=FILENAME    The file from which the PostgreSQL password will be read. [default: /run/secrets/postgres-password]
   --postgres-username=USERNAME    If specified then the specified value will be used when connecting to the PostgreSQL database.  Otherwise, the username will be read from a local file.
   --postgres-username-file=FILENAME    The file from which the PostgreSQL username will be read. [default: /run/secrets/postgres-username]
-  --private-ssh-key=KEY  If specified then the specified value will be used for the private ssh key.  Otherwise, the ssh key will be read from a local file.
-  --private-ssh-key-file=FILENAME  The file from which the private ssh key will be read. [default: /run/secrets/private-ssh-key]
+  --private-ssh-key=KEY  If specified then the specified value will be used for the private SSH key.  Otherwise, the SSH key will be read from a local file.
+  --private-ssh-key-file=FILENAME  The file from which the private SSH key will be read. [default: /run/secrets/private-ssh-key]
   --rdp-password=PASSWORD  If specified then the specified value will be used for the RDP password.  Otherwise, the password will be read from a local file.
   --rdp-password-file=FILENAME  The file from which the RDP password will be read. [default: /run/secrets/rdp-password]
   --rdp-username=USERNAME  If specified then the specified value will be used for the RDP username.  Otherwise, the username will be read from a local file.
