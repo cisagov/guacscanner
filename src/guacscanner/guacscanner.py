@@ -703,11 +703,20 @@ def main() -> None:
                             regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES
                         ]
                     except AttributeError:
-                        # I'm not sure why this happens, but this
-                        # should keep things moving when it does.  It
-                        # is a temporary problem that eventually sorts
-                        # itself out.  I think it only happens while
-                        # instances are being created or destroyed.
+                        # This exception can be thrown when an
+                        # instance is running an AMI to which the
+                        # account no longer has access; for example,
+                        # between the time when a new AMI of the same
+                        # type is built and terraform-post-packer is
+                        # run and the new AMI is applied to the
+                        # account.  In this situation we can't take
+                        # any action because we can't access the AMI's
+                        # name and hence can't know if the instance
+                        # AMI is of a type whose Guacamole connections
+                        # are being controlled by guacscanner.
+                        #
+                        # In any event, this continue statement should
+                        # keep things moving when it does.
                         logging.exception(
                             "Unable to determine if instance is running an AMI that would cause it to be skipped."
                         )
