@@ -124,7 +124,7 @@ def test_bad_log_level():
 @mock_ec2
 def test_addition_of_guacuser():
     """Verify that adding the guacuser works as expected."""
-    # Create and VPC
+    # Create a VPC
     ec2 = boto3.client("ec2", "us-east-1")
     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
     vpc_id = vpc["Vpc"]["VpcId"]
@@ -173,7 +173,7 @@ def test_addition_of_guacuser():
 @mock_ec2
 def test_guacuser_already_exists():
     """Verify that the case where the guacuser already exists works as expected."""
-    # Create and VPC
+    # Create a VPC
     ec2 = boto3.client("ec2", "us-east-1")
     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
     vpc_id = vpc["Vpc"]["VpcId"]
