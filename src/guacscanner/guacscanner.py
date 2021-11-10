@@ -55,7 +55,6 @@ import boto3
 import docopt
 from ec2_metadata import ec2_metadata
 import psycopg
-from psycopg import sql
 from schema import And, Optional, Or, Schema, SchemaError, Use
 
 from ._version import __version__
@@ -94,123 +93,125 @@ INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-[0-9a-f]{17})\)$")
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 
 # TODO: Determine if we can use f-strings instead of .format() for
-# these queries.  Also define the sql.Identifier() variables
+# these queries.  Also define the psycopg.sql.Identifier() variables
 # separately so that they can be reused where that is possible.  See
 # cisagov/guacscanner#3 for more details.
 
 # The PostgreSQL queries used for adding and removing connections
-COUNT_QUERY = sql.SQL(
+COUNT_QUERY = psycopg.sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s"
 ).format(
-    id_field=sql.Identifier("connection_id"),
-    table=sql.Identifier("guacamole_connection"),
-    name_field=sql.Identifier("connection_name"),
+    id_field=psycopg.sql.Identifier("connection_id"),
+    table=psycopg.sql.Identifier("guacamole_connection"),
+    name_field=psycopg.sql.Identifier("connection_name"),
 )
-IDS_QUERY = sql.SQL("SELECT {id_field} FROM {table} WHERE {name_field} = %s").format(
-    id_field=sql.Identifier("connection_id"),
-    table=sql.Identifier("guacamole_connection"),
-    name_field=sql.Identifier("connection_name"),
+IDS_QUERY = psycopg.sql.SQL(
+    "SELECT {id_field} FROM {table} WHERE {name_field} = %s"
+).format(
+    id_field=psycopg.sql.Identifier("connection_id"),
+    table=psycopg.sql.Identifier("guacamole_connection"),
+    name_field=psycopg.sql.Identifier("connection_name"),
 )
-NAMES_QUERY = sql.SQL("SELECT {id_field}, {name_field} FROM {table}").format(
-    id_field=sql.Identifier("connection_id"),
-    name_field=sql.Identifier("connection_name"),
-    table=sql.Identifier("guacamole_connection"),
+NAMES_QUERY = psycopg.sql.SQL("SELECT {id_field}, {name_field} FROM {table}").format(
+    id_field=psycopg.sql.Identifier("connection_id"),
+    name_field=psycopg.sql.Identifier("connection_name"),
+    table=psycopg.sql.Identifier("guacamole_connection"),
 )
-INSERT_CONNECTION_QUERY = sql.SQL(
+INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
     """INSERT INTO {table} (
     {name_field}, {protocol_field}, {max_connections_field},
     {max_connections_per_user_field}, {proxy_port_field}, {proxy_hostname_field},
     {proxy_encryption_method_field})
     VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {id_field};"""
 ).format(
-    table=sql.Identifier("guacamole_connection"),
-    name_field=sql.Identifier("connection_name"),
-    protocol_field=sql.Identifier("protocol"),
-    max_connections_field=sql.Identifier("max_connections"),
-    max_connections_per_user_field=sql.Identifier("max_connections_per_user"),
-    proxy_port_field=sql.Identifier("proxy_port"),
-    proxy_hostname_field=sql.Identifier("proxy_hostname"),
-    proxy_encryption_method_field=sql.Identifier("proxy_encryption_method"),
-    id_field=sql.Identifier("connection_id"),
+    table=psycopg.sql.Identifier("guacamole_connection"),
+    name_field=psycopg.sql.Identifier("connection_name"),
+    protocol_field=psycopg.sql.Identifier("protocol"),
+    max_connections_field=psycopg.sql.Identifier("max_connections"),
+    max_connections_per_user_field=psycopg.sql.Identifier("max_connections_per_user"),
+    proxy_port_field=psycopg.sql.Identifier("proxy_port"),
+    proxy_hostname_field=psycopg.sql.Identifier("proxy_hostname"),
+    proxy_encryption_method_field=psycopg.sql.Identifier("proxy_encryption_method"),
+    id_field=psycopg.sql.Identifier("connection_id"),
 )
-INSERT_CONNECTION_PARAMETER_QUERY = sql.SQL(
+INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL(
     """INSERT INTO {table}
     ({id_field}, {parameter_name_field}, {parameter_value_field})
     VALUES (%s, %s, %s);"""
 ).format(
-    table=sql.Identifier("guacamole_connection_parameter"),
-    id_field=sql.Identifier("connection_id"),
-    parameter_name_field=sql.Identifier("parameter_name"),
-    parameter_value_field=sql.Identifier("parameter_value"),
+    table=psycopg.sql.Identifier("guacamole_connection_parameter"),
+    id_field=psycopg.sql.Identifier("connection_id"),
+    parameter_name_field=psycopg.sql.Identifier("parameter_name"),
+    parameter_value_field=psycopg.sql.Identifier("parameter_value"),
 )
-DELETE_CONNECTIONS_QUERY = sql.SQL(
+DELETE_CONNECTIONS_QUERY = psycopg.sql.SQL(
     """DELETE FROM {table} WHERE {id_field} = %s;"""
 ).format(
-    table=sql.Identifier("guacamole_connection"),
-    id_field=sql.Identifier("connection_id"),
+    table=psycopg.sql.Identifier("guacamole_connection"),
+    id_field=psycopg.sql.Identifier("connection_id"),
 )
-DELETE_CONNECTION_PARAMETERS_QUERY = sql.SQL(
+DELETE_CONNECTION_PARAMETERS_QUERY = psycopg.sql.SQL(
     """DELETE FROM {table} WHERE {id_field} = %s;"""
 ).format(
-    table=sql.Identifier("guacamole_connection_parameter"),
-    id_field=sql.Identifier("connection_id"),
+    table=psycopg.sql.Identifier("guacamole_connection_parameter"),
+    id_field=psycopg.sql.Identifier("connection_id"),
 )
 
 # The PostgreSQL queries used for adding and removing users
-ENTITY_COUNT_QUERY = sql.SQL(
+ENTITY_COUNT_QUERY = psycopg.sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s AND {type_field} = %s"
 ).format(
-    id_field=sql.Identifier("entity_id"),
-    table=sql.Identifier("guacamole_entity"),
-    name_field=sql.Identifier("name"),
-    type_field=sql.Identifier("type"),
+    id_field=psycopg.sql.Identifier("entity_id"),
+    table=psycopg.sql.Identifier("guacamole_entity"),
+    name_field=psycopg.sql.Identifier("name"),
+    type_field=psycopg.sql.Identifier("type"),
 )
-ENTITY_ID_QUERY = sql.SQL(
+ENTITY_ID_QUERY = psycopg.sql.SQL(
     "SELECT {id_field} FROM {table} WHERE {name_field} = %s AND {type_field} = %s"
 ).format(
-    id_field=sql.Identifier("entity_id"),
-    table=sql.Identifier("guacamole_entity"),
-    name_field=sql.Identifier("name"),
-    type_field=sql.Identifier("type"),
+    id_field=psycopg.sql.Identifier("entity_id"),
+    table=psycopg.sql.Identifier("guacamole_entity"),
+    name_field=psycopg.sql.Identifier("name"),
+    type_field=psycopg.sql.Identifier("type"),
 )
-INSERT_ENTITY_QUERY = sql.SQL(
+INSERT_ENTITY_QUERY = psycopg.sql.SQL(
     """INSERT INTO {table} (
     {name_field}, {type_field})
     VALUES (%s, %s) RETURNING {id_field};"""
 ).format(
-    table=sql.Identifier("guacamole_entity"),
-    name_field=sql.Identifier("name"),
-    type_field=sql.Identifier("type"),
-    id_field=sql.Identifier("entity_id"),
+    table=psycopg.sql.Identifier("guacamole_entity"),
+    name_field=psycopg.sql.Identifier("name"),
+    type_field=psycopg.sql.Identifier("type"),
+    id_field=psycopg.sql.Identifier("entity_id"),
 )
-INSERT_USER_QUERY = sql.SQL(
+INSERT_USER_QUERY = psycopg.sql.SQL(
     """INSERT INTO {table} (
     {id_field}, {hash_field}, {salt_field}, {date_field})
     VALUES (%s, %s, %s, %s);"""
 ).format(
-    table=sql.Identifier("guacamole_user"),
-    id_field=sql.Identifier("entity_id"),
-    hash_field=sql.Identifier("password_hash"),
-    salt_field=sql.Identifier("password_salt"),
-    date_field=sql.Identifier("password_date"),
+    table=psycopg.sql.Identifier("guacamole_user"),
+    id_field=psycopg.sql.Identifier("entity_id"),
+    hash_field=psycopg.sql.Identifier("password_hash"),
+    salt_field=psycopg.sql.Identifier("password_salt"),
+    date_field=psycopg.sql.Identifier("password_date"),
 )
 # The PostgreSQL queries used to add and remove connection
 # permissions
-INSERT_CONNECTION_PERMISSION_QUERY = sql.SQL(
+INSERT_CONNECTION_PERMISSION_QUERY = psycopg.sql.SQL(
     """INSERT INTO {table} (
     {entity_id_field}, {connection_id_field}, {permission_field})
     VALUES (%s, %s, %s);"""
 ).format(
-    table=sql.Identifier("guacamole_connection_permission"),
-    entity_id_field=sql.Identifier("entity_id"),
-    connection_id_field=sql.Identifier("connection_id"),
-    permission_field=sql.Identifier("permission"),
+    table=psycopg.sql.Identifier("guacamole_connection_permission"),
+    entity_id_field=psycopg.sql.Identifier("entity_id"),
+    connection_id_field=psycopg.sql.Identifier("connection_id"),
+    permission_field=psycopg.sql.Identifier("permission"),
 )
-DELETE_CONNECTION_PERMISSIONS_QUERY = sql.SQL(
+DELETE_CONNECTION_PERMISSIONS_QUERY = psycopg.sql.SQL(
     """DELETE FROM {table} WHERE {connection_id_field} = %s;"""
 ).format(
-    table=sql.Identifier("guacamole_connection_permission"),
-    connection_id_field=sql.Identifier("connection_id"),
+    table=psycopg.sql.Identifier("guacamole_connection_permission"),
+    connection_id_field=psycopg.sql.Identifier("connection_id"),
 )
 
 
