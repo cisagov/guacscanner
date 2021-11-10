@@ -698,7 +698,6 @@ def main() -> None:
             private_ssh_key = file.read()
 
     db_connection_string = f"user={postgres_username} password={postgres_password} host={postgres_hostname} port={postgres_port} dbname={postgres_db_name}"
-    logging.debug("DB connection string is %s.", db_connection_string)
 
     vpc_id = validated_args["--vpc-id"]
     # TODO: Verify that the region specified is indeed a valid AWS
