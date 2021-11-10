@@ -293,7 +293,10 @@ def add_user(
     # guacadmin password by the database initialization script.
     hexed_salt = salt.hex().upper()
     hasher = hashlib.sha256()
-    hasher.update(password.encode())
+    # We must use the same password hashing algorithm as is used in
+    # the Guacamole source code, so we cannot avoid the LGTM warning
+    # here.
+    hasher.update(password.encode())  # lgtm[py/weak-sensitive-data-hashing]
     hasher.update(hexed_salt.encode())
     salted_password_hash = hasher.hexdigest().upper()
 
