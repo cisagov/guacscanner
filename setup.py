@@ -86,6 +86,8 @@ setup(
     package_dir={"": "src"},
     py_modules=[splitext(basename(path))[0] for path in glob("src/*.py")],
     include_package_data=True,
+    # TODO: Loosen these requirements.  See cisagov/guacscanner#9 for
+    # more details.
     install_requires=[
         "boto3 == 1.19.6",
         "docopt == 0.6.2",
