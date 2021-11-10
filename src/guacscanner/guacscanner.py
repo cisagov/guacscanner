@@ -86,6 +86,10 @@ DEFAULT_AMI_SKIP_REGEXES = [
 ]
 
 # Some precompiled regexes
+#
+# Note the use of a named capture group here via the (?P<name>...)
+# syntax, as described here:
+# https://docs.python.org/3/library/re.html#regular-expression-syntax
 INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-[0-9a-f]{17})\)$")
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 
