@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
+  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--region=REGION] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
   guacscanner (-h | --help)
 
 Options:
@@ -27,6 +27,7 @@ Options:
   --rdp-password-file=FILENAME  The file from which the RDP password will be read. [default: /run/secrets/rdp-password]
   --rdp-username=USERNAME  If specified then the specified value will be used for the RDP username.  Otherwise, the username will be read from a local file.
   --rdp-username-file=FILENAME  The file from which the RDP username will be read. [default: /run/secrets/rdp-username]
+  --region=REGION  The AWS region in which the VPC specified by --vpc-id exists.  Unused if --vpc-id is not specified. [default: us-east-1]
   --sleep=SECONDS  Sleep for the specified number of seconds between executions of the Guacamole connection update loop. [default: 60]
   --vnc-password=PASSWORD  If specified then the specified value will be used for the VNC password.  Otherwise, the password will be read from a local file.
   --vnc-password-file=FILENAME  The file from which the VNC password will be read. [default: /run/secrets/vnc-password]
@@ -658,15 +659,20 @@ def main() -> None:
     logging.debug("DB connection string is %s.", db_connection_string)
 
     vpc_id = validated_args["--vpc-id"]
-
-    ec2 = boto3.resource("ec2", region_name="us-east-1")
+    region = validated_args["--region"]
 
     # If no VPC ID was specified on the command line then grab the VPC
     # ID where this instance resides and use that.
+    ec2 = None
     if vpc_id is None:
         instance_id = ec2_metadata.instance_id
+        region = ec2_metadata.region
+        ec2 = boto3.resource("ec2", region_name=region)
         instance = ec2.Instance(instance_id)
         vpc_id = instance.vpc_id
+    else:
+        ec2 = boto3.resource("ec2", region_name=region)
+
     logging.info("Examining instances in VPC %s.", vpc_id)
 
     instances = ec2.Vpc(vpc_id).instances.all()
