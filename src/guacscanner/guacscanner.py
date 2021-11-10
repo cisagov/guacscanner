@@ -71,7 +71,7 @@ DEFAULT_ADD_INSTANCE_STATES = [
     "running",
 ]
 DEFAULT_PASSWORD_LENGTH = 32
-DEFAULT_SALT_LENGTH = 32
+DEFAULT_PASSWORD_SALT_LENGTH = 32
 DEFAULT_POSTGRES_DB_NAME = "guacamole_db"
 DEFAULT_POSTGRES_HOSTNAME = "postgres"
 DEFAULT_POSTGRES_PORT = 5432
@@ -282,7 +282,7 @@ def add_user(
         )
     if salt is None:
         # Generate a random byte array
-        salt = secrets.token_bytes(DEFAULT_SALT_LENGTH)
+        salt = secrets.token_bytes(DEFAULT_PASSWORD_SALT_LENGTH)
 
     # Compute the salted password hash that is to be saved to the
     # database.
