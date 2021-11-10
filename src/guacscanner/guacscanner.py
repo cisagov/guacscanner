@@ -697,6 +697,8 @@ def main() -> None:
     logging.debug("DB connection string is %s.", db_connection_string)
 
     vpc_id = validated_args["--vpc-id"]
+    # TODO: Verify that the region specified is indeed a valid AWS
+    # region.  See cisagov/guacscanner#6 for more details.
     region = validated_args["--region"]
 
     # If no VPC ID was specified on the command line then grab the VPC
