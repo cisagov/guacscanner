@@ -280,12 +280,17 @@ def add_user(
         salt = secrets.token_bytes(DEFAULT_SALT_LENGTH)
 
     # Compute the salted password hash that is to be saved to the
-    # database
-    hexed_salt = salt.hex()
+    # database.
+    #
+    # Note that we convert the hexed salt and the salted password hash
+    # to uppercase, since that must be done to match the corresponding
+    # values in the database that are generated for the default
+    # guacadmin password by the database initialization script.
+    hexed_salt = salt.hex().upper()
     hasher = hashlib.sha256()
     hasher.update(password.encode())
     hasher.update(hexed_salt.encode())
-    salted_password_hash = hasher.hexdigest()
+    salted_password_hash = hasher.hexdigest().upper()
 
     entity_id = None
     with db_connection.cursor() as cursor:
