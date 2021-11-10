@@ -42,8 +42,11 @@ Options:
 
 # Standard Python Libraries
 import datetime
+import hashlib
 import logging
 import re
+import secrets
+import string
 import sys
 import time
 
@@ -68,6 +71,8 @@ from ._version import __version__
 DEFAULT_ADD_INSTANCE_STATES = [
     "running",
 ]
+DEFAULT_PASSWORD_LENGTH = 32
+DEFAULT_SALT_LENGTH = 32
 DEFAULT_POSTGRES_DB_NAME = "guacamole_db"
 DEFAULT_POSTGRES_HOSTNAME = "postgres"
 DEFAULT_POSTGRES_PORT = 5432
@@ -246,9 +251,42 @@ def get_entity_id(db_connection, entity_name, entity_type):
         return cursor.fetchone()["entity_id"]
 
 
-def add_user(db_connection, username):
-    """Add a user, returning its corresponding entity ID."""
+def add_user(
+    db_connection: psycopg.Connection,
+    username: str,
+    password: str = None,
+    salt: bytes = None,
+) -> int:
+    """Add a user, returning its corresponding entity ID.
+
+    If password (salt) is None (the default) then a random password
+    (salt) will be generated for the user.
+
+    Note that the salt should be an array of bytes, while the password
+    should be an ASCII string.
+
+    """
     logging.debug("Adding user entry for %s.", username)
+
+    if password is None:
+        # Generate a random password consisting of ASCII letters and
+        # digits
+        alphabet = string.ascii_letters + string.digits
+        password = "".join(
+            secrets.choice(alphabet) for i in range(DEFAULT_PASSWORD_LENGTH)
+        )
+    if salt is None:
+        # Generate a random byte array
+        salt = secrets.token_bytes(DEFAULT_SALT_LENGTH)
+
+    # Compute the salted password hash that is to be saved to the
+    # database
+    hexed_salt = salt.hex()
+    hasher = hashlib.sha256()
+    hasher.update(password.encode())
+    hasher.update(hexed_salt.encode())
+    salted_password_hash = hasher.hexdigest()
+
     entity_id = None
     with db_connection.cursor() as cursor:
         cursor.execute(
@@ -263,13 +301,8 @@ def add_user(db_connection, username):
             INSERT_USER_QUERY,
             (
                 entity_id,
-                # guacadmin
-                bytes.fromhex(
-                    "CA458A7D494E3BE824F5E1E175A1556C0F8EEF2C2D7DF3633BEC4A29C4411960"
-                ),
-                bytes.fromhex(
-                    "FE24ADC5E11E2B25288D1704ABE67A79E342ECC26064CE69C5B3177795A82264"
-                ),
+                bytes.fromhex(salted_password_hash),
+                salt,
                 datetime.datetime.now(),
             ),
         )
