@@ -271,7 +271,7 @@ def add_user(
     should be an ASCII string.
 
     """
-    logging.debug("Adding user entry for %s.", username)
+    logging.debug("Adding user entry.")
 
     if password is None:
         # Generate a random password consisting of ASCII letters and
