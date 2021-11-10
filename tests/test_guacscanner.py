@@ -223,6 +223,9 @@ def test_guacuser_already_exists():
 def test_new_linux_instance():
     """Verify that adding a new Linux instance works as expected."""
     # Create and populate a VPC with an EC2 instance
+    #
+    # TODO: Create a test fixture to reduce duplicatin of this EC2
+    # setup code.  See cisagov/guacscanner#7 for more details.
     ec2 = boto3.client("ec2", "us-east-1")
     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
     vpc_id = vpc["Vpc"]["VpcId"]
