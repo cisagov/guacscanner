@@ -57,6 +57,7 @@ from ec2_metadata import ec2_metadata
 import psycopg
 from schema import And, Optional, Or, Schema, SchemaError, Use
 
+from .ConnectionParameters import ConnectionParameters
 from ._version import __version__
 
 # TODO: Add exception handling for all the database accesses and
@@ -350,11 +351,7 @@ def instance_connection_exists(db_connection, connection_name):
 def add_instance_connection(
     db_connection,
     instance,
-    vnc_username,
-    vnc_password,
-    private_ssh_key,
-    rdp_username,
-    rdp_password,
+    connection_parameters: ConnectionParameters,
     entity_id,
 ):
     """Add a connection for the EC2 instance."""
@@ -394,17 +391,17 @@ def add_instance_connection(
             (
                 connection_id,
                 "sftp-directory",
-                f"/home/{vnc_username}/Documents",
+                f"/home/{connection_parameters.vnc_username}/Documents",
             ),
             (
                 connection_id,
                 "sftp-username",
-                vnc_username,
+                connection_parameters.vnc_username,
             ),
             (
                 connection_id,
                 "sftp-private-key",
-                private_ssh_key,
+                connection_parameters.private_ssh_key,
             ),
             (
                 connection_id,
@@ -414,7 +411,7 @@ def add_instance_connection(
             (
                 connection_id,
                 "sftp-root-directory",
-                f"/home/{vnc_username}/",
+                f"/home/{connection_parameters.vnc_username}/",
             ),
             (
                 connection_id,
@@ -434,7 +431,7 @@ def add_instance_connection(
             (
                 connection_id,
                 "password",
-                vnc_password,
+                connection_parameters.vnc_password,
             ),
             (
                 connection_id,
@@ -443,7 +440,10 @@ def add_instance_connection(
             ),
         )
         if is_windows:
-            guac_conn_params = (
+            # mypy gives a warning on this line because we are
+            # re-assigning the variable with a tuple of a different
+            # length, but we know this is safe to do here.
+            guac_conn_params = (  # type: ignore
                 (
                     connection_id,
                     "ignore-cert",
@@ -457,7 +457,7 @@ def add_instance_connection(
                 (
                     connection_id,
                     "password",
-                    rdp_password,
+                    connection_parameters.rdp_password,
                 ),
                 (
                     connection_id,
@@ -467,7 +467,7 @@ def add_instance_connection(
                 (
                     connection_id,
                     "username",
-                    rdp_username,
+                    connection_parameters.rdp_username,
                 ),
             )
 
@@ -537,11 +537,7 @@ def process_instance(
     instance,
     add_instance_states,
     remove_instance_states,
-    vnc_username,
-    vnc_password,
-    private_ssh_key,
-    rdp_username,
-    rdp_password,
+    connection_parameters: ConnectionParameters,
     entity_id,
 ):
     """Add/remove connections for the specified EC2 instance."""
@@ -560,11 +556,7 @@ def process_instance(
             add_instance_connection(
                 db_connection,
                 instance,
-                vnc_username,
-                vnc_password,
-                private_ssh_key,
-                rdp_username,
-                rdp_password,
+                connection_parameters,
                 entity_id,
             )
         else:
@@ -782,11 +774,13 @@ def main() -> None:
                         instance,
                         add_instance_states,
                         remove_instance_states,
-                        vnc_username,
-                        vnc_password,
-                        private_ssh_key,
-                        rdp_username,
-                        rdp_password,
+                        ConnectionParameters(
+                            private_ssh_key=private_ssh_key,
+                            rdp_password=rdp_password,
+                            rdp_username=rdp_username,
+                            vnc_password=vnc_password,
+                            vnc_username=vnc_username,
+                        ),
                         guacuser_id,
                     )
 

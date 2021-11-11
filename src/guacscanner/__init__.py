@@ -5,6 +5,7 @@
 # version information about this Python package.
 from ._version import __version__  # noqa: F401
 from .guacscanner import (
+    ConnectionParameters,
     add_instance_connection,
     add_user,
     check_for_ghost_instances,
@@ -19,6 +20,7 @@ from .guacscanner import (
 )
 
 __all__ = [
+    "ConnectionParameters",
     "add_instance_connection",
     "add_user",
     "check_for_ghost_instances",
