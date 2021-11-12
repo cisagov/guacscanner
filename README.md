@@ -6,20 +6,17 @@
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/cisagov/guacscanner.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/cisagov/guacscanner/context:python)
 [![Known Vulnerabilities](https://snyk.io/test/github/cisagov/guacscanner/develop/badge.svg)](https://snyk.io/test/github/cisagov/guacscanner)
 
-This is a generic skeleton project that can be used to quickly get a
-new [cisagov](https://github.com/cisagov) Python library GitHub
-project started.  This skeleton project contains [licensing
-information](LICENSE), as well as
-[pre-commit hooks](https://pre-commit.com) and
-[GitHub Actions](https://github.com/features/actions) configurations
-appropriate for a Python library project.
+This project is a Python utility that continually scans the EC2 instances
+in an AWS VPC and adds/removes Guacamole connections in the underlying
+PostgreSQL database accordingly.
 
-## New Repositories from a Skeleton ##
-
-Please see our [Project Setup guide](https://github.com/cisagov/development-guide/tree/develop/project_setup)
-for step-by-step instructions on how to start a new repository from
-a skeleton. This will save you time and effort when configuring a
-new repository!
+This utility is [Dockerized](https://docker.com) in
+[cisagov/guacscanner-docker](https://github.com/cisagov/guacscanner-docker),
+and the resulting Docker container is intended to run as a part of
+[cisagov/guacamole-composition](https://github.com/cisagov/guacamole-composition),
+although it could - probably uselessly - run in a [Docker
+composition](https://docs.docker.com/compose/) alongside only the
+[official PostgreSQL Docker image](https://hub.docker.com/_/postgres).
 
 ## Contributing ##
 
