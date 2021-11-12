@@ -718,88 +718,90 @@ def main() -> None:
     keep_looping = True
     guacuser_id = None
     while keep_looping:
+        time.sleep(validated_args["--sleep"])
+
         try:
-            with psycopg.connect(
+            db_connection = psycopg.connect(
                 db_connection_string, row_factory=psycopg.rows.dict_row
-            ) as db_connection:
-                # Create guacuser if it doesn't already exist
-                #
-                # TODO: Figure out a way to make this cleaner.  We
-                # don't want to hardcode the guacuser name, and we
-                # want to allow the user to specify a list of users
-                # that should be created if they don't exist and given
-                # access to use the connections created by
-                # guacscanner.  See cisagov/guacscanner#4 for more
-                # details.
-                if guacuser_id is None:
-                    # We haven't initialized guacuser_id yet, so let's
-                    # do it now.
-                    if not entity_exists(db_connection, "guacuser", "USER"):
-                        guacuser_id = add_user(db_connection, "guacuser")
-                    else:
-                        guacuser_id = get_entity_id(db_connection, "guacuser", "USER")
-
-                for instance in instances:
-                    ami = ec2.Image(instance.image_id)
-                    # Early exit if this instance is running an AMI
-                    # that we want to avoid adding to Guacamole.
-                    try:
-                        ami_matches = [
-                            regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES
-                        ]
-                    except AttributeError:
-                        # This exception can be thrown when an
-                        # instance is running an AMI to which the
-                        # account no longer has access; for example,
-                        # between the time when a new AMI of the same
-                        # type is built and terraform-post-packer is
-                        # run and the new AMI is applied to the
-                        # account.  In this situation we can't take
-                        # any action because we can't access the AMI's
-                        # name and hence can't know if the instance
-                        # AMI is of a type whose Guacamole connections
-                        # are being controlled by guacscanner.
-                        #
-                        # In any event, this continue statement should
-                        # keep things moving when it does.
-                        logging.exception(
-                            "Unable to determine if instance is running an AMI that would cause it to be skipped."
-                        )
-                        continue
-                    if any(ami_matches):
-                        continue
-
-                    process_instance(
-                        db_connection,
-                        instance,
-                        add_instance_states,
-                        remove_instance_states,
-                        ConnectionParameters(
-                            private_ssh_key=private_ssh_key,
-                            rdp_password=rdp_password,
-                            rdp_username=rdp_username,
-                            vnc_password=vnc_password,
-                            vnc_username=vnc_username,
-                        ),
-                        guacuser_id,
-                    )
-
-                logging.info(
-                    "Checking to see if any connections belonging to nonexistent instances are in the database."
-                )
-                check_for_ghost_instances(db_connection, instances)
-
-                if oneshot:
-                    logging.debug(
-                        "Stopping Guacamole connection update loop because --oneshot is present."
-                    )
-                    keep_looping = False
-                    continue
+            )
         except psycopg.OperationalError:
             logging.exception(
                 "Unable to connect to the PostgreSQL database backending Guacamole."
             )
+            continue
 
-        time.sleep(validated_args["--sleep"])
+        # Create guacuser if it doesn't already exist
+        #
+        # TODO: Figure out a way to make this cleaner.  We don't want
+        # to hardcode the guacuser name, and we want to allow the user
+        # to specify a list of users that should be created if they
+        # don't exist and given access to use the connections created
+        # by guacscanner.  See cisagov/guacscanner#4 for more details.
+        if guacuser_id is None:
+            # We haven't initialized guacuser_id yet, so let's do it
+            # now.
+            if not entity_exists(db_connection, "guacuser", "USER"):
+                guacuser_id = add_user(db_connection, "guacuser")
+            else:
+                guacuser_id = get_entity_id(db_connection, "guacuser", "USER")
+
+        for instance in instances:
+            ami = ec2.Image(instance.image_id)
+            # Early exit if this instance is running an AMI that we
+            # want to avoid adding to Guacamole.
+            try:
+                ami_matches = [
+                    regex.match(ami.name) for regex in DEFAULT_AMI_SKIP_REGEXES
+                ]
+            except AttributeError:
+                # This exception can be thrown when an instance is
+                # running an AMI to which the account no longer has
+                # access; for example, between the time when a new AMI
+                # of the same type is built and terraform-post-packer
+                # is run and the new AMI is applied to the account.
+                # In this situation we can't take any action because
+                # we can't access the AMI's name and hence can't know
+                # if the instance AMI is of a type whose Guacamole
+                # connections are being controlled by guacscanner.
+                #
+                # In any event, this continue statement should keep
+                # things moving when it does.
+                logging.exception(
+                    "Unable to determine if instance is running an AMI that would cause it to be skipped."
+                )
+                continue
+            if any(ami_matches):
+                continue
+
+            process_instance(
+                db_connection,
+                instance,
+                add_instance_states,
+                remove_instance_states,
+                ConnectionParameters(
+                    private_ssh_key=private_ssh_key,
+                    rdp_password=rdp_password,
+                    rdp_username=rdp_username,
+                    vnc_password=vnc_password,
+                    vnc_username=vnc_username,
+                ),
+                guacuser_id,
+            )
+
+        logging.info(
+            "Checking to see if any connections belonging to nonexistent instances are in the database."
+        )
+        check_for_ghost_instances(db_connection, instances)
+
+        if oneshot:
+            logging.debug(
+                "Stopping Guacamole connection update loop because --oneshot is present."
+            )
+            keep_looping = False
+
+        # pycopg.connect() can act as a context manager, but the
+        # connection is not closed when you leave the context;
+        # therefore, we still have to close the connection manually.
+        db_connection.close()
 
     logging.shutdown()
