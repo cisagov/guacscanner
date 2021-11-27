@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--region=REGION] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
+  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--region=REGION] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID] [--windows-sftp-base=SFTPBASE|--windows-sftp-base-file=FILENAME]
   guacscanner (-h | --help)
 
 Options:
@@ -37,6 +37,8 @@ Options:
                          or destroyed in the specified VPC ID.  If not
                          specified then the ID of the VPC in which the host
                          resides will be used.
+  --windows-sftp-base=SFTPBASE  If specified then the specified value will be used as the base path for configuring Windows SFTP connections.  Otherwise, the path will be read from a local file.
+  --windows-sftp-base-file=FILENAME  The file from which the base path for Windows SFTP connections will be read. [default: /run/secrets/windows-sftp-base]
 """
 
 
@@ -362,10 +364,12 @@ def add_instance_connection(
     connection_protocol = "vnc"
     connection_port = 5901
     if instance.platform and instance.platform.lower() == "windows":
-        logging.debug("Instance %s is Windows and therefore uses RDP.", instance.id)
+        logging.debug(
+            "Instance %s is Windows and therefore uses different parameters for VNC.",
+            instance.id,
+        )
         is_windows = True
-        connection_protocol = "rdp"
-        connection_port = 3389
+        connection_port = 5900
 
     with db_connection.cursor() as cursor:
         cursor.execute(
@@ -440,14 +444,46 @@ def add_instance_connection(
             ),
         )
         if is_windows:
-            # mypy gives a warning on this line because we are
-            # re-assigning the variable with a tuple of a different
-            # length, but we know this is safe to do here.
-            guac_conn_params = (  # type: ignore
+            guac_conn_params = (
                 (
                     connection_id,
-                    "ignore-cert",
+                    "cursor",
+                    "local",
+                ),
+                (
+                    connection_id,
+                    "sftp-directory",
+                    f"{connection_parameters.windows_sftp_base}/Documents",
+                ),
+                (
+                    connection_id,
+                    "sftp-username",
+                    connection_parameters.rdp_username,
+                ),
+                (
+                    connection_id,
+                    "sftp-private-key",
+                    connection_parameters.private_ssh_key,
+                ),
+                (
+                    connection_id,
+                    "sftp-server-alive-interval",
+                    60,
+                ),
+                (
+                    connection_id,
+                    "sftp-root-directory",
+                    "/",
+                ),
+                (
+                    connection_id,
+                    "enable-sftp",
                     True,
+                ),
+                (
+                    connection_id,
+                    "color-depth",
+                    24,
                 ),
                 (
                     connection_id,
@@ -457,17 +493,12 @@ def add_instance_connection(
                 (
                     connection_id,
                     "password",
-                    connection_parameters.rdp_password,
+                    connection_parameters.vnc_password,
                 ),
                 (
                     connection_id,
                     "port",
                     connection_port,
-                ),
-                (
-                    connection_id,
-                    "username",
-                    connection_parameters.rdp_username,
                 ),
             )
 
@@ -693,6 +724,11 @@ def main() -> None:
         with open(validated_args["--private-ssh-key-file"], "r") as file:
             private_ssh_key = file.read()
 
+    windows_sftp_base = validated_args["--windows-sftp-base"]
+    if windows_sftp_base is None:
+        with open(validated_args["--windows-sftp-base-file"], "r") as file:
+            windows_sftp_base = file.read()
+
     db_connection_string = f"user={postgres_username} password={postgres_password} host={postgres_hostname} port={postgres_port} dbname={postgres_db_name}"
 
     vpc_id = validated_args["--vpc-id"]
@@ -784,6 +820,7 @@ def main() -> None:
                     rdp_username=rdp_username,
                     vnc_password=vnc_password,
                     vnc_username=vnc_username,
+                    windows_sftp_base=windows_sftp_base,
                 ),
                 guacuser_id,
             )

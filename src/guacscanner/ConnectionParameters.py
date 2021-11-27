@@ -16,6 +16,7 @@ class ConnectionParameters:
         "rdp_username",
         "vnc_password",
         "vnc_username",
+        "windows_sftp_base",
     )
 
     """The private SSH key to use when transferring data via VNC."""
@@ -32,3 +33,6 @@ class ConnectionParameters:
 
     """The user name to use when Guacamole establishes a VNC connection."""
     vnc_username: str
+
+    """The base path to use for configuring SFTP connections to Windows instances."""
+    windows_sftp_base: str
