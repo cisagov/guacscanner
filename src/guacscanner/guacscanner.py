@@ -362,6 +362,8 @@ def add_instance_connection(
     connection_name = get_connection_name(instance)
     is_windows = False
     connection_protocol = "vnc"
+    # Note that the Windows VNC server software in use must support a connection
+    # to display 1 for this port to work.
     connection_port = 5901
     if instance.platform and instance.platform.lower() == "windows":
         logging.debug(
@@ -369,7 +371,6 @@ def add_instance_connection(
             instance.id,
         )
         is_windows = True
-        connection_port = 5900
 
     with db_connection.cursor() as cursor:
         cursor.execute(
