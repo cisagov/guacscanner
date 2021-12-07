@@ -471,6 +471,8 @@ def add_instance_connection(
                     "sftp-server-alive-interval",
                     60,
                 ),
+                # This must be the root of the filesystem to give access to any
+                # network drives through Guacamole's file sharing functionality.
                 (
                     connection_id,
                     "sftp-root-directory",
