@@ -87,6 +87,7 @@ def test_log_levels(level):
             "--vnc-password=dummy_vnc_password",
             "--vnc-username=dummy_vnc_username",
             f"--vpc-id={DUMMY_VPC_ID}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
         ],
     ):
         with patch.object(logging.root, "handlers", []):
@@ -157,6 +158,7 @@ def test_addition_of_guacuser():
             "--vnc-password=dummy_vnc_password",
             "--vnc-username=dummy_vnc_username",
             f"--vpc-id={vpc_id}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
         ],
     ):
         with patch.object(
@@ -206,6 +208,7 @@ def test_guacuser_already_exists():
             "--vnc-password=dummy_vnc_password",
             "--vnc-username=dummy_vnc_username",
             f"--vpc-id={vpc_id}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
         ],
     ):
         with patch.object(
@@ -279,6 +282,7 @@ def test_new_linux_instance():
             "--vnc-password=dummy_vnc_password",
             "--vnc-username=dummy_vnc_username",
             f"--vpc-id={vpc_id}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
         ],
     ):
         with patch.object(
@@ -349,6 +353,7 @@ def test_terminated_instance():
             "--vnc-password=dummy_vnc_password",
             "--vnc-username=dummy_vnc_username",
             f"--vpc-id={vpc_id}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
         ],
     ):
         with patch.object(
@@ -414,6 +419,7 @@ def test_stopped_instance():
             "--vnc-password=dummy_vnc_password",
             "--vnc-username=dummy_vnc_username",
             f"--vpc-id={vpc_id}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
         ],
     ):
         with patch.object(
@@ -487,6 +493,7 @@ def test_new_windows_instance():
             "--vnc-password=dummy_vnc_password",
             "--vnc-username=dummy_vnc_username",
             f"--vpc-id={vpc_id}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
         ],
     ):
         with patch.object(
