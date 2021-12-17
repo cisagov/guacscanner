@@ -416,7 +416,7 @@ def add_instance_connection(
             (
                 connection_id,
                 "sftp-root-directory",
-                f"/home/{connection_parameters.vnc_username}/",
+                "/",
             ),
             (
                 connection_id,
