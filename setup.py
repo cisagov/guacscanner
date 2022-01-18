@@ -74,12 +74,11 @@ setup(
         # Specify the Python versions you support here. In particular, ensure
         # that you indicate whether you support Python 2, Python 3 or both.
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     # What does your project relate to?
     keywords="aws, guacamole, vpc",
     packages=find_packages(where="src"),
@@ -91,7 +90,7 @@ setup(
     install_requires=[
         "boto3 == 1.20.37",
         "docopt == 0.6.2",
-        "ec2-metadata == 2.6.0",
+        "ec2-metadata == 2.7.0",
         "psycopg == 3.0.8",
         "schema == 0.7.5",
         "setuptools >= 24.2.0",
