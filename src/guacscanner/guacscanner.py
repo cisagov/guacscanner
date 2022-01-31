@@ -563,7 +563,12 @@ def remove_instance_connections(db_connection, instance):
 def get_connection_name(instance):
     """Return the unique connection name for an EC2 instance."""
     name = [tag["Value"] for tag in instance.tags if tag["Key"] == "Name"][0]
-    return f"{name} ({instance.id})"
+    private_ip = instance.private_ip_address
+    public_ip = instance.public_ip_address
+    ipv6_ip = instance.ipv6_address
+
+    ips = "/".join([ip for ip in (private_ip, public_ip, ipv6_ip) if ip])
+    return " - ".join([s for s in (f"{name} ({instance.id})", ips) if s])
 
 
 def process_instance(
