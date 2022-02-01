@@ -540,6 +540,7 @@ def add_instance_connection(
         cursor.execute(
             INSERT_CONNECTION_ATTRIBUTE_QUERY,
             (
+                connection_id,
                 "instance_id",
                 instance.id,
             ),
