@@ -664,7 +664,7 @@ def check_for_ghost_instances(db_connection, instances):
     """Check to see if any connections belonging to nonexistent instances are in the database."""
     instance_ids = [instance.id for instance in instances]
     with db_connection.cursor() as cursor:
-        cursor.execute(ALL_IDS_QUERY, "instance_id")
+        cursor.execute(ALL_IDS_QUERY, ("instance_id",))
         for record in cursor:
             connection_id = record["connection_id"]
             instance_id = record["attribute_value"]
