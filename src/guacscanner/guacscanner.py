@@ -87,12 +87,7 @@ DEFAULT_AMI_SKIP_REGEXES = [
     re.compile(r"^samba-.*$"),
 ]
 
-# Some precompiled regexes
-#
-# Note the use of a named capture group here via the (?P<name>...)
-# syntax, as described here:
-# https://docs.python.org/3/library/re.html#regular-expression-syntax
-INSTANCE_ID_REGEX = re.compile(r"^.* \((?P<id>i-[0-9a-f]{17})\)$")
+# A precompiled regex
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 
 # TODO: Determine if we can use f-strings instead of .format() for
@@ -102,23 +97,28 @@ VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 
 # The PostgreSQL queries used for adding and removing connections
 COUNT_QUERY = psycopg.sql.SQL(
-    "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s"
+    "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s AND {value_field} = %s"
 ).format(
     id_field=psycopg.sql.Identifier("connection_id"),
-    table=psycopg.sql.Identifier("guacamole_connection"),
-    name_field=psycopg.sql.Identifier("connection_name"),
+    table=psycopg.sql.Identifier("guacamole_connection_attribute"),
+    name_field=psycopg.sql.Identifier("attribute_name"),
+    value_field=psycopg.sql.Identifier("attribute_value"),
 )
 IDS_QUERY = psycopg.sql.SQL(
-    "SELECT {id_field} FROM {table} WHERE {name_field} = %s"
+    "SELECT {id_field} FROM {table} WHERE {name_field} = %s AND {value_field} = %s"
 ).format(
     id_field=psycopg.sql.Identifier("connection_id"),
-    table=psycopg.sql.Identifier("guacamole_connection"),
-    name_field=psycopg.sql.Identifier("connection_name"),
+    table=psycopg.sql.Identifier("guacamole_connection_attribute"),
+    name_field=psycopg.sql.Identifier("attribute_name"),
+    value_field=psycopg.sql.Identifier("attribute_value"),
 )
-NAMES_QUERY = psycopg.sql.SQL("SELECT {id_field}, {name_field} FROM {table}").format(
+ALL_IDS_QUERY = psycopg.sql.SQL(
+    "SELECT {id_field}, {value_field} FROM {table} WHERE {name_field} = %s"
+).format(
     id_field=psycopg.sql.Identifier("connection_id"),
-    name_field=psycopg.sql.Identifier("connection_name"),
-    table=psycopg.sql.Identifier("guacamole_connection"),
+    table=psycopg.sql.Identifier("guacamole_connection_attribute"),
+    name_field=psycopg.sql.Identifier("attribute_name"),
+    value_field=psycopg.sql.Identifier("attribute_value"),
 )
 INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
     """INSERT INTO {table} (
@@ -147,6 +147,16 @@ INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL(
     parameter_name_field=psycopg.sql.Identifier("parameter_name"),
     parameter_value_field=psycopg.sql.Identifier("parameter_value"),
 )
+INSERT_CONNECTION_ATTRIBUTE_QUERY = psycopg.sql.SQL(
+    """INSERT INTO {table}
+    ({id_field}, {attribute_name_field}, {attribute_value_field})
+    VALUES (%s, %s, %s);"""
+).format(
+    table=psycopg.sql.Identifier("guacamole_connection_attribute"),
+    id_field=psycopg.sql.Identifier("connection_id"),
+    attribute_name_field=psycopg.sql.Identifier("attribute_name"),
+    attribute_value_field=psycopg.sql.Identifier("attribute_value"),
+)
 DELETE_CONNECTIONS_QUERY = psycopg.sql.SQL(
     """DELETE FROM {table} WHERE {id_field} = %s;"""
 ).format(
@@ -157,6 +167,12 @@ DELETE_CONNECTION_PARAMETERS_QUERY = psycopg.sql.SQL(
     """DELETE FROM {table} WHERE {id_field} = %s;"""
 ).format(
     table=psycopg.sql.Identifier("guacamole_connection_parameter"),
+    id_field=psycopg.sql.Identifier("connection_id"),
+)
+DELETE_CONNECTION_ATTRIBUTES_QUERY = psycopg.sql.SQL(
+    """DELETE FROM {table} WHERE {id_field} = %s;"""
+).format(
+    table=psycopg.sql.Identifier("guacamole_connection_attribute"),
     id_field=psycopg.sql.Identifier("connection_id"),
 )
 
@@ -329,22 +345,28 @@ def add_user(
     return entity_id
 
 
-def instance_connection_exists(db_connection, connection_name):
-    """Return a boolean indicating whether a connection with the specified name exists."""
+def instance_connection_exists(db_connection, instance_id):
+    """Return a boolean indicating whether a connection for the specified instance exists."""
     with db_connection.cursor() as cursor:
         logging.debug(
-            "Checking to see if a connection named %s exists in the database.",
-            connection_name,
+            "Checking to see if a connection for the instance ID %s exists in the database.",
+            instance_id,
         )
-        cursor.execute(COUNT_QUERY, (connection_name,))
+        cursor.execute(
+            COUNT_QUERY,
+            (
+                "instance_id",
+                instance_id,
+            ),
+        )
         count = cursor.fetchone()["count"]
         if count != 0:
             logging.debug(
-                "A connection named %s exists in the database.", connection_name
+                "A connection for the instance %s exists in the database.", instance_id
             )
         else:
             logging.debug(
-                "No connection named %s exists in the database.", connection_name
+                "No connection for the instance %s exists in the database.", instance_id
             )
 
         return count != 0
@@ -512,6 +534,19 @@ def add_instance_connection(
         cursor.executemany(INSERT_CONNECTION_PARAMETER_QUERY, guac_conn_params)
 
         logging.debug(
+            "Adding connection attribute entries for connection named %s.",
+            connection_name,
+        )
+        cursor.execute(
+            INSERT_CONNECTION_ATTRIBUTE_QUERY,
+            (
+                connection_id,
+                "instance_id",
+                instance.id,
+            ),
+        )
+
+        logging.debug(
             "Adding connection permission entries for connection named %s.",
             connection_name,
         )
@@ -537,22 +572,31 @@ def remove_connection(db_connection, connection_id):
         logging.debug("Removing connection parameter entries for %s.", connection_id)
         cursor.execute(DELETE_CONNECTION_PARAMETERS_QUERY, (connection_id,))
 
+        logging.debug("Removing connection attribute entries for %s.", connection_id)
+        cursor.execute(DELETE_CONNECTION_ATTRIBUTES_QUERY, (connection_id,))
+
         logging.debug("Removing connection permission entries for %s.", connection_id)
         cursor.execute(DELETE_CONNECTION_PERMISSIONS_QUERY, (connection_id,))
 
 
 def remove_instance_connections(db_connection, instance):
     """Remove all connections corresponding to the EC2 instance."""
-    logging.debug("Removing connections for %s.", instance.id)
-    connection_name = get_connection_name(instance)
+    instance_id = instance.id
+    logging.debug("Removing connections for %s.", instance_id)
     with db_connection.cursor() as cursor:
         logging.debug(
-            "Checking to see if any connections named %s exist in the database.",
-            connection_name,
+            "Checking to see if any connections for instance %s exist in the database.",
+            instance_id,
         )
-        cursor.execute(IDS_QUERY, (connection_name,))
+        cursor.execute(
+            IDS_QUERY,
+            (
+                "instance_id",
+                instance_id,
+            ),
+        )
         for record in cursor:
-            logging.info("Removing entries for connections named %s.", connection_name)
+            logging.info("Removing entries for instance %s.", instance_id)
             connection_id = record["connection_id"]
             remove_connection(db_connection, connection_id)
 
@@ -563,7 +607,12 @@ def remove_instance_connections(db_connection, instance):
 def get_connection_name(instance):
     """Return the unique connection name for an EC2 instance."""
     name = [tag["Value"] for tag in instance.tags if tag["Key"] == "Name"][0]
-    return f"{name} ({instance.id})"
+    private_ip = instance.private_ip_address
+    public_ip = instance.public_ip_address
+    ipv6_ip = instance.ipv6_address
+
+    ips = "/".join(ip for ip in (private_ip, public_ip, ipv6_ip) if ip)
+    return " - ".join(s for s in (f"{name} ({instance.id})", ips) if s)
 
 
 def process_instance(
@@ -575,18 +624,16 @@ def process_instance(
     entity_id,
 ):
     """Add/remove connections for the specified EC2 instance."""
-    logging.debug("Examining instance %s.", instance.id)
+    logging.debug("Examining instance %s.", (instance_id := instance.id))
     state = instance.state["Name"]
-    connection_name = get_connection_name(instance)
-    logging.debug("Connection name is %s.", connection_name)
     if state in add_instance_states:
         logging.info(
             "Instance %s is in state %s and will be added if not already present.",
-            instance.id,
+            instance_id,
             state,
         )
-        if not instance_connection_exists(db_connection, connection_name):
-            logging.info("Adding a connection for %s.", instance.id)
+        if not instance_connection_exists(db_connection, instance_id):
+            logging.info("Adding a connection for %s.", instance_id)
             add_instance_connection(
                 db_connection,
                 instance,
@@ -595,19 +642,19 @@ def process_instance(
             )
         else:
             logging.debug(
-                "Connection for %s already exists in the database.", instance.id
+                "Connection for %s already exists in the database.", instance_id
             )
     elif state in remove_instance_states:
         logging.info(
             "Instance %s is in state %s and will be removed if present.",
-            instance.id,
+            instance_id,
             state,
         )
         remove_instance_connections(db_connection, instance)
     else:
         logging.debug(
             "Instance %s is in state %s and WILL NOT be added or removed.",
-            instance.id,
+            instance_id,
             state,
         )
 
@@ -616,20 +663,10 @@ def check_for_ghost_instances(db_connection, instances):
     """Check to see if any connections belonging to nonexistent instances are in the database."""
     instance_ids = [instance.id for instance in instances]
     with db_connection.cursor() as cursor:
-        cursor.execute(NAMES_QUERY)
+        cursor.execute(ALL_IDS_QUERY, ("instance_id",))
         for record in cursor:
             connection_id = record["connection_id"]
-            connection_name = record["connection_name"]
-            m = INSTANCE_ID_REGEX.match(connection_name)
-            instance_id = None
-            if m:
-                instance_id = m.group("id")
-            else:
-                logging.error(
-                    'Connection name "%s" does not contain a valid instance ID',
-                    connection_name,
-                )
-
+            instance_id = record["attribute_value"]
             if instance_id not in instance_ids:
                 logging.info(
                     "Connection for %s being removed since that instance no longer exists.",
