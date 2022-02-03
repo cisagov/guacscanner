@@ -611,8 +611,8 @@ def get_connection_name(instance):
     public_ip = instance.public_ip_address
     ipv6_ip = instance.ipv6_address
 
-    ips = "/".join([ip for ip in (private_ip, public_ip, ipv6_ip) if ip])
-    return " - ".join([s for s in (f"{name} ({instance.id})", ips) if s])
+    ips = "/".join(ip for ip in (private_ip, public_ip, ipv6_ip) if ip)
+    return " - ".join(s for s in (f"{name} ({instance.id})", ips) if s)
 
 
 def process_instance(
