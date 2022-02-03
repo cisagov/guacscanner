@@ -624,8 +624,7 @@ def process_instance(
     entity_id,
 ):
     """Add/remove connections for the specified EC2 instance."""
-    instance_id = instance.id
-    logging.debug("Examining instance %s.", instance_id)
+    logging.debug("Examining instance %s.", (instance_id := instance.id))
     state = instance.state["Name"]
     if state in add_instance_states:
         logging.info(
