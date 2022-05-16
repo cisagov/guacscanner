@@ -91,7 +91,7 @@ setup(
         "boto3 == 1.21.28",
         "docopt == 0.6.2",
         "ec2-metadata == 2.9.0",
-        "psycopg == 3.0.10",
+        "psycopg == 3.0.13",
         "schema == 0.7.5",
         "setuptools >= 24.2.0",
     ],
