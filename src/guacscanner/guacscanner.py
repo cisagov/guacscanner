@@ -15,7 +15,7 @@ Options:
   -h --help              Show this message.
   --log-level=LEVEL      If specified, then the log level will be set to
                          the specified value.  Valid values are "debug", "info",
-                         "warning", "error", and "critical". [default: info]
+                         "warning", "error", and "critical". [default: warning]
   --oneshot              If present then the loop that adds (removes) connections for new (terminated) instances will only be run once.
   --postgres-password=PASSWORD    If specified then the specified value will be used as the password when connecting to the PostgreSQL database.  Otherwise, the password will be read from a local file.
   --postgres-password-file=FILENAME    The file from which the PostgreSQL password will be read. [default: /run/secrets/postgres-password]
