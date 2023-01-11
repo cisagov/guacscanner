@@ -1,9 +1,8 @@
 # guacscanner #
 
 [![GitHub Build Status](https://github.com/cisagov/guacscanner/workflows/build/badge.svg)](https://github.com/cisagov/guacscanner/actions)
+[![CodeQL](https://github.com/cisagov/guacscanner/workflows/CodeQL/badge.svg)](https://github.com/cisagov/guacscanner/actions/workflows/codeql-analysis.yml)
 [![Coverage Status](https://coveralls.io/repos/github/cisagov/guacscanner/badge.svg?branch=develop)](https://coveralls.io/github/cisagov/guacscanner?branch=develop)
-[![Total alerts](https://img.shields.io/lgtm/alerts/g/cisagov/guacscanner.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/cisagov/guacscanner/alerts/)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/cisagov/guacscanner.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/cisagov/guacscanner/context:python)
 [![Known Vulnerabilities](https://snyk.io/test/github/cisagov/guacscanner/develop/badge.svg)](https://snyk.io/test/github/cisagov/guacscanner)
 
 This project is a Python utility that continually scans the EC2 instances
