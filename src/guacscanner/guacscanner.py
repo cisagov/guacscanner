@@ -51,6 +51,7 @@ import secrets
 import string
 import sys
 import time
+import typing
 
 # Third-Party Libraries
 import boto3
@@ -278,8 +279,8 @@ def get_entity_id(db_connection, entity_name, entity_type):
 def add_user(
     db_connection: psycopg.Connection,
     username: str,
-    password: Optional[str] = None,
-    salt: Optional[bytes] = None,
+    password: typing.Optional[str] = None,
+    salt: typing.Optional[bytes] = None,
 ) -> int:
     """Add a user, returning its corresponding entity ID.
 
