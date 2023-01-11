@@ -278,8 +278,8 @@ def get_entity_id(db_connection, entity_name, entity_type):
 def add_user(
     db_connection: psycopg.Connection,
     username: str,
-    password: str = None,
-    salt: bytes = None,
+    password: Optional[str] = None,
+    salt: Optional[bytes] = None,
 ) -> int:
     """Add a user, returning its corresponding entity ID.
 
@@ -731,42 +731,42 @@ def main() -> None:
 
     postgres_password = validated_args["--postgres-password"]
     if postgres_password is None:
-        with open(validated_args["--postgres-password-file"], "r") as file:
+        with open(validated_args["--postgres-password-file"]) as file:
             postgres_password = file.read()
 
     postgres_username = validated_args["--postgres-username"]
     if postgres_username is None:
-        with open(validated_args["--postgres-username-file"], "r") as file:
+        with open(validated_args["--postgres-username-file"]) as file:
             postgres_username = file.read()
 
     rdp_password = validated_args["--rdp-password"]
     if rdp_password is None:
-        with open(validated_args["--rdp-password-file"], "r") as file:
+        with open(validated_args["--rdp-password-file"]) as file:
             rdp_password = file.read()
 
     rdp_username = validated_args["--rdp-username"]
     if rdp_username is None:
-        with open(validated_args["--rdp-username-file"], "r") as file:
+        with open(validated_args["--rdp-username-file"]) as file:
             rdp_username = file.read()
 
     vnc_password = validated_args["--vnc-password"]
     if vnc_password is None:
-        with open(validated_args["--vnc-password-file"], "r") as file:
+        with open(validated_args["--vnc-password-file"]) as file:
             vnc_password = file.read()
 
     vnc_username = validated_args["--vnc-username"]
     if vnc_username is None:
-        with open(validated_args["--vnc-username-file"], "r") as file:
+        with open(validated_args["--vnc-username-file"]) as file:
             vnc_username = file.read()
 
     private_ssh_key = validated_args["--private-ssh-key"]
     if private_ssh_key is None:
-        with open(validated_args["--private-ssh-key-file"], "r") as file:
+        with open(validated_args["--private-ssh-key-file"]) as file:
             private_ssh_key = file.read()
 
     windows_sftp_base = validated_args["--windows-sftp-base"]
     if windows_sftp_base is None:
-        with open(validated_args["--windows-sftp-base-file"], "r") as file:
+        with open(validated_args["--windows-sftp-base-file"]) as file:
             windows_sftp_base = file.read()
 
     db_connection_string = f"user={postgres_username} password={postgres_password} host={postgres_hostname} port={postgres_port} dbname={postgres_db_name}"
