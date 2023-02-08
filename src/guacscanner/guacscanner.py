@@ -51,14 +51,14 @@ import secrets
 import string
 import sys
 import time
-import typing
+from typing import Optional
 
 # Third-Party Libraries
 import boto3
 import docopt
 from ec2_metadata import ec2_metadata
 import psycopg
-from schema import And, Optional, Or, Schema, SchemaError, Use
+import schema
 
 from .ConnectionParameters import ConnectionParameters
 from ._version import __version__
@@ -279,8 +279,8 @@ def get_entity_id(db_connection, entity_name, entity_type):
 def add_user(
     db_connection: psycopg.Connection,
     username: str,
-    password: typing.Optional[str] = None,
-    salt: typing.Optional[bytes] = None,
+    password: Optional[str] = None,
+    salt: Optional[bytes] = None,
 ) -> int:
     """Add a user, returning its corresponding entity ID.
 
@@ -683,24 +683,24 @@ def main() -> None:
     # Parse command line arguments
     args = docopt.docopt(__doc__, version=__version__)
     # Validate and convert arguments as needed
-    schema = Schema(
+    mySchema = schema.Schema(
         {
-            "--log-level": And(
+            "--log-level": schema.And(
                 str,
-                Use(str.lower),
+                schema.Use(str.lower),
                 lambda n: n in ("debug", "info", "warning", "error", "critical"),
                 error="Possible values for --log-level are "
                 + "debug, info, warning, error, and critical.",
             ),
-            "--sleep": And(
-                Use(float),
+            "--sleep": schema.And(
+                schema.Use(float),
                 error="Value for --sleep must be parseable as a floating point number.",
             ),
-            Optional("--vpc-id"): Or(
+            schema.Optional("--vpc-id"): schema.Or(
                 None,
-                And(
+                schema.And(
                     str,
-                    Use(str.lower),
+                    schema.Use(str.lower),
                     lambda x: VPC_ID_REGEX.match(x) is not None,
                     error="Possible values for --vpc-id are the characters vpc- followed by either 8 or 17 hexadecimal digits.",
                 ),
@@ -709,8 +709,8 @@ def main() -> None:
         }
     )
     try:
-        validated_args = schema.validate(args)
-    except SchemaError as err:
+        validated_args = mySchema.validate(args)
+    except schema.SchemaError as err:
         # Exit because one or more of the arguments were invalid
         print(err, file=sys.stderr)
         sys.exit(1)
