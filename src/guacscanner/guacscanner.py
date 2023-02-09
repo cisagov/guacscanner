@@ -51,13 +51,14 @@ import secrets
 import string
 import sys
 import time
+from typing import Optional
 
 # Third-Party Libraries
 import boto3
 import docopt
 from ec2_metadata import ec2_metadata
 import psycopg
-from schema import And, Optional, Or, Schema, SchemaError, Use
+import schema
 
 from .ConnectionParameters import ConnectionParameters
 from ._version import __version__
@@ -278,8 +279,8 @@ def get_entity_id(db_connection, entity_name, entity_type):
 def add_user(
     db_connection: psycopg.Connection,
     username: str,
-    password: str = None,
-    salt: bytes = None,
+    password: Optional[str] = None,
+    salt: Optional[bytes] = None,
 ) -> int:
     """Add a user, returning its corresponding entity ID.
 
@@ -682,24 +683,24 @@ def main() -> None:
     # Parse command line arguments
     args = docopt.docopt(__doc__, version=__version__)
     # Validate and convert arguments as needed
-    schema = Schema(
+    my_schema = schema.Schema(
         {
-            "--log-level": And(
+            "--log-level": schema.And(
                 str,
-                Use(str.lower),
+                schema.Use(str.lower),
                 lambda n: n in ("debug", "info", "warning", "error", "critical"),
                 error="Possible values for --log-level are "
                 + "debug, info, warning, error, and critical.",
             ),
-            "--sleep": And(
-                Use(float),
+            "--sleep": schema.And(
+                schema.Use(float),
                 error="Value for --sleep must be parseable as a floating point number.",
             ),
-            Optional("--vpc-id"): Or(
+            schema.Optional("--vpc-id"): schema.Or(
                 None,
-                And(
+                schema.And(
                     str,
-                    Use(str.lower),
+                    schema.Use(str.lower),
                     lambda x: VPC_ID_REGEX.match(x) is not None,
                     error="Possible values for --vpc-id are the characters vpc- followed by either 8 or 17 hexadecimal digits.",
                 ),
@@ -708,8 +709,8 @@ def main() -> None:
         }
     )
     try:
-        validated_args = schema.validate(args)
-    except SchemaError as err:
+        validated_args = my_schema.validate(args)
+    except schema.SchemaError as err:
         # Exit because one or more of the arguments were invalid
         print(err, file=sys.stderr)
         sys.exit(1)
@@ -731,42 +732,42 @@ def main() -> None:
 
     postgres_password = validated_args["--postgres-password"]
     if postgres_password is None:
-        with open(validated_args["--postgres-password-file"], "r") as file:
+        with open(validated_args["--postgres-password-file"]) as file:
             postgres_password = file.read()
 
     postgres_username = validated_args["--postgres-username"]
     if postgres_username is None:
-        with open(validated_args["--postgres-username-file"], "r") as file:
+        with open(validated_args["--postgres-username-file"]) as file:
             postgres_username = file.read()
 
     rdp_password = validated_args["--rdp-password"]
     if rdp_password is None:
-        with open(validated_args["--rdp-password-file"], "r") as file:
+        with open(validated_args["--rdp-password-file"]) as file:
             rdp_password = file.read()
 
     rdp_username = validated_args["--rdp-username"]
     if rdp_username is None:
-        with open(validated_args["--rdp-username-file"], "r") as file:
+        with open(validated_args["--rdp-username-file"]) as file:
             rdp_username = file.read()
 
     vnc_password = validated_args["--vnc-password"]
     if vnc_password is None:
-        with open(validated_args["--vnc-password-file"], "r") as file:
+        with open(validated_args["--vnc-password-file"]) as file:
             vnc_password = file.read()
 
     vnc_username = validated_args["--vnc-username"]
     if vnc_username is None:
-        with open(validated_args["--vnc-username-file"], "r") as file:
+        with open(validated_args["--vnc-username-file"]) as file:
             vnc_username = file.read()
 
     private_ssh_key = validated_args["--private-ssh-key"]
     if private_ssh_key is None:
-        with open(validated_args["--private-ssh-key-file"], "r") as file:
+        with open(validated_args["--private-ssh-key-file"]) as file:
             private_ssh_key = file.read()
 
     windows_sftp_base = validated_args["--windows-sftp-base"]
     if windows_sftp_base is None:
-        with open(validated_args["--windows-sftp-base-file"], "r") as file:
+        with open(validated_args["--windows-sftp-base-file"]) as file:
             windows_sftp_base = file.read()
 
     db_connection_string = f"user={postgres_username} password={postgres_password} host={postgres_hostname} port={postgres_port} dbname={postgres_db_name}"
