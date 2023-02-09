@@ -683,7 +683,7 @@ def main() -> None:
     # Parse command line arguments
     args = docopt.docopt(__doc__, version=__version__)
     # Validate and convert arguments as needed
-    mySchema = schema.Schema(
+    my_schema = schema.Schema(
         {
             "--log-level": schema.And(
                 str,
@@ -709,7 +709,7 @@ def main() -> None:
         }
     )
     try:
-        validated_args = mySchema.validate(args)
+        validated_args = my_schema.validate(args)
     except schema.SchemaError as err:
         # Exit because one or more of the arguments were invalid
         print(err, file=sys.stderr)
