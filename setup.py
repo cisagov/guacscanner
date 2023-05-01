@@ -91,7 +91,7 @@ setup(
     # TODO: Loosen these requirements.  See cisagov/guacscanner#9 for
     # more details.
     install_requires=[
-        "boto3 == 1.24.82",
+        "boto3 == 1.26.123",
         "docopt == 0.6.2",
         "ec2-metadata == 2.10.0",
         "psycopg == 3.1.2",
