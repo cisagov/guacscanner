@@ -111,7 +111,7 @@ setup(
             "coveralls != 1.11.0",
             # We are using the moto syntax that debuted in version
             # 5.0.0.
-            "moto >= 5.0.0",
+            "moto[ec2] >= 5.0.0",
             "pre-commit",
             "pytest-cov",
             "pytest",
