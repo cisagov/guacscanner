@@ -92,7 +92,7 @@ setup(
     # TODO: Loosen these requirements.  See cisagov/guacscanner#9 for
     # more details.
     install_requires=[
-        "boto3 == 1.34.23",
+        "boto3 == 1.34.29",
         "docopt == 0.6.2",
         "ec2-metadata == 2.13.0",
         "psycopg == 3.1.17",
@@ -109,7 +109,9 @@ setup(
             # 1.11.1 fixed this issue, but to ensure expected behavior we'll pin
             # to never grab the regression version.
             "coveralls != 1.11.0",
-            "moto",
+            # We are using the moto syntax that debuted in version
+            # 5.0.0.
+            "moto[ec2] >= 5.0.0",
             "pre-commit",
             "pytest-cov",
             "pytest",

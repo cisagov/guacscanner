@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 # Third-Party Libraries
 import boto3
-from moto import mock_ec2
+from moto import mock_aws
 import psycopg
 import pytest
 
@@ -69,7 +69,7 @@ def test_release_version():
     ), "RELEASE_TAG does not match the project version"
 
 
-@mock_ec2
+@mock_aws
 @pytest.mark.parametrize("level", log_levels)
 def test_log_levels(level):
     """Validate commandline log-level arguments."""
@@ -122,7 +122,7 @@ def test_bad_log_level():
         assert return_code == 1, "main() should exit with error"
 
 
-@mock_ec2
+@mock_aws
 def test_addition_of_guacuser():
     """Verify that adding the guacuser works as expected."""
     # Create a VPC
@@ -172,7 +172,7 @@ def test_addition_of_guacuser():
             mock_cursor.execute.assert_called()
 
 
-@mock_ec2
+@mock_aws
 def test_guacuser_already_exists():
     """Verify that the case where the guacuser already exists works as expected."""
     # Create a VPC
@@ -222,7 +222,7 @@ def test_guacuser_already_exists():
             mock_cursor.execute.assert_called()
 
 
-@mock_ec2
+@mock_aws
 def test_new_linux_instance():
     """Verify that adding a new Linux instance works as expected."""
     # Create and populate a VPC with an EC2 instance
@@ -297,7 +297,7 @@ def test_new_linux_instance():
             mock_cursor.executemany.assert_called()
 
 
-@mock_ec2
+@mock_aws
 def test_terminated_instance():
     """Verify that adding a terminated instance works as expected."""
     # Create and populate a VPC with a terminated EC2 instance
@@ -368,7 +368,7 @@ def test_terminated_instance():
             mock_cursor.executemany.assert_not_called()
 
 
-@mock_ec2
+@mock_aws
 def test_stopped_instance():
     """Verify that adding a stopped instance works as expected."""
     # Create and populate a VPC with a stopped EC2 instance
@@ -431,7 +431,7 @@ def test_stopped_instance():
             mock_connection.commit.assert_called()
 
 
-@mock_ec2
+@mock_aws
 def test_new_windows_instance():
     """Verify that adding a new Windows instance works as expected."""
     # Create and populate a VPC with an EC2 instance
