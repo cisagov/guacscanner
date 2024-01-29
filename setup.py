@@ -109,7 +109,9 @@ setup(
             # 1.11.1 fixed this issue, but to ensure expected behavior we'll pin
             # to never grab the regression version.
             "coveralls != 1.11.0",
-            "moto",
+            # We are using the moto syntax that debuted in version
+            # 5.0.0.
+            "moto >= 5.0.0",
             "pre-commit",
             "pytest-cov",
             "pytest",
