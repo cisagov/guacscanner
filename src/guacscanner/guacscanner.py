@@ -870,10 +870,12 @@ def main() -> None:
         with open(validated_args["--windows-sftp-base-file"]) as file:
             windows_sftp_base = file.read().strip()
 
+    # We use a raw string here since the password, in particular, could contain
+    # a literal backslash.
     db_connection_string = (
-        f"user={postgres_username} password={postgres_password} "
-        f"host={postgres_hostname} port={postgres_port} "
-        f"dbname={postgres_db_name}"
+        rf"user={postgres_username} password={postgres_password} "
+        rf"host={postgres_hostname} port={postgres_port} "
+        rf"dbname={postgres_db_name}"
     )
 
     vpc_id = validated_args["--vpc-id"]
