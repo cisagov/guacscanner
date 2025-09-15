@@ -94,7 +94,7 @@ setup(
     install_requires=[
         "boto3 == 1.34.108",
         "docopt == 0.6.2",
-        "ec2-metadata == 2.13.0",
+        "ec2-metadata == 2.16.0",
         "psycopg[binary] == 3.2.9",
         "schema == 0.7.7",
         "setuptools",
