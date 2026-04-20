@@ -94,7 +94,8 @@ VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 # separately so that they can be reused where that is possible.  See
 # cisagov/guacscanner#3 for more details.
 
-# The PostgreSQL queries used for adding and removing connections
+# The PostgreSQL queries used for adding, removing, and updating
+# connections
 COUNT_QUERY = psycopg.sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s AND {value_field} = %s"
 ).format(
@@ -134,6 +135,15 @@ INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
     proxy_port_field=psycopg.sql.Identifier("proxy_port"),
     proxy_hostname_field=psycopg.sql.Identifier("proxy_hostname"),
     proxy_encryption_method_field=psycopg.sql.Identifier("proxy_encryption_method"),
+    id_field=psycopg.sql.Identifier("connection_id"),
+)
+UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL(
+    """UPDATE {table}
+    SET {name_field} = '%s'
+    WHERE {id_field} = '%s';"""
+).format(
+    table=psycopg.sql.Identifier("guacamole_connection"),
+    name_field=psycopg.sql.Identifier("connection_name"),
     id_field=psycopg.sql.Identifier("connection_id"),
 )
 INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL(
