@@ -674,9 +674,15 @@ def process_instance(
                 entity_id,
             )
         else:
+            # The instance already exists in the database, so we will
+            # just update the connection name in case IPs have changed.
             logging.debug(
                 "Connection for %s already exists in the database.", instance_id
             )
+            logging.info(
+                "Updating connection name for %s in case IPs have changed.", instance_id
+            )
+            update_instance_connections(db_connection, instance)
     elif state in remove_instance_states:
         logging.info(
             "Instance %s is in state %s and will be removed if present.",
