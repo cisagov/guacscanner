@@ -572,6 +572,30 @@ def add_instance_connection(
     db_connection.commit()
 
 
+def update_instance_connections(db_connection, instance):
+    """Update the name of all connections corresponding to the EC2 instance."""
+    instance_id = instance.id
+    connection_name = get_connection_name(instance)
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            IDS_QUERY,
+            (
+                "instance_id",
+                instance_id,
+            ),
+        )
+        for record in cursor:
+            logging.debug("Updating connection names for %s.", instance_id)
+            connection_id = record["connection_id"]
+            cursor.execute(
+                UPDATE_CONNECTION_NAME_QUERY,
+                (connection_name, connection_id),
+            )
+
+    # Commit all pending transactions to the database
+    db_connection.commit()
+
+
 def remove_connection(db_connection, connection_id):
     """Remove all connections corresponding to the specified ID."""
     logging.debug("Removing connection entries for %s.", connection_id)
