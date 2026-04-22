@@ -870,12 +870,15 @@ def main() -> None:
         with open(validated_args["--windows-sftp-base-file"]) as file:
             windows_sftp_base = file.read().strip()
 
-    # We use a raw string here since the password, in particular, could contain
-    # a literal backslash.
-    db_connection_string = (
-        rf"user={postgres_username} password={postgres_password} "
-        rf"host={postgres_hostname} port={postgres_port} "
-        rf"dbname={postgres_db_name}"
+    # Construct the PostgreSQL connection string using psycopg's helper to
+    # ensure that any special characters (such as backslashes) are safely
+    # escaped.
+    db_connection_string = psycopg.conninfo.make_conninfo(
+        user=postgres_username,
+        password=postgres_password,
+        host=postgres_hostname,
+        port=postgres_port,
+        dbname=postgres_db_name,
     )
 
     vpc_id = validated_args["--vpc-id"]
