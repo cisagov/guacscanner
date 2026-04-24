@@ -572,10 +572,28 @@ def add_instance_connection(
     db_connection.commit()
 
 
+def update_connection_name(db_connection, connection_id, connection_name):
+    """Update the name associated with a connection."""
+    with db_connection.cursor() as cursor:
+        logging.debug(
+            "Updating connection name for connection_id %s to %s.",
+            connection_id,
+            connection_name,
+        )
+        cursor.execute(
+            UPDATE_CONNECTION_NAME_QUERY,
+            (connection_name, connection_id),
+        )
+
+    # Commit all pending transactions to the database
+    db_connection.commit()
+
+
 def update_instance_connections(db_connection, instance):
     """Update the name of all connections corresponding to the EC2 instance."""
     instance_id = instance.id
     connection_name = get_connection_name(instance)
+    logging.debug("Updating connection names for %s.", instance_id)
     with db_connection.cursor() as cursor:
         cursor.execute(
             IDS_QUERY,
@@ -585,12 +603,8 @@ def update_instance_connections(db_connection, instance):
             ),
         )
         for record in cursor:
-            logging.debug("Updating connection names for %s.", instance_id)
             connection_id = record["connection_id"]
-            cursor.execute(
-                UPDATE_CONNECTION_NAME_QUERY,
-                (connection_name, connection_id),
-            )
+            update_connection_name(db_connection, connection_id, connection_name)
 
     # Commit all pending transactions to the database
     db_connection.commit()
