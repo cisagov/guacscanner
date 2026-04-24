@@ -139,7 +139,7 @@ INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
 )
 UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL(
     """UPDATE {table}
-    SET {name_field} = '%s'
+    SET {name_field} = %s
     WHERE {id_field} = %s;"""
 ).format(
     table=psycopg.sql.Identifier("guacamole_connection"),
