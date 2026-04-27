@@ -140,7 +140,8 @@ INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
 UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL(
     """UPDATE {table}
     SET {name_field} = %s
-    WHERE {id_field} = %s;"""
+    WHERE {id_field} = %s
+    AND {name_field} IS DISTINCT FROM %s;"""
 ).format(
     table=psycopg.sql.Identifier("guacamole_connection"),
     name_field=psycopg.sql.Identifier("connection_name"),
@@ -582,7 +583,7 @@ def update_connection_name(db_connection, connection_id, connection_name):
         )
         cursor.execute(
             UPDATE_CONNECTION_NAME_QUERY,
-            (connection_name, connection_id),
+            (connection_name, connection_id, connection_name),
         )
 
     # Commit all pending transactions to the database
