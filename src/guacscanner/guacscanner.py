@@ -603,7 +603,7 @@ def update_instance_connections(db_connection, instance):
                 instance_id,
             ),
         )
-        for record in cursor:
+        for record in cursor.fetchall():
             connection_id = record["connection_id"]
             update_connection_name(db_connection, connection_id, connection_name)
 
