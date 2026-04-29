@@ -94,7 +94,8 @@ VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 # separately so that they can be reused where that is possible.  See
 # cisagov/guacscanner#3 for more details.
 
-# The PostgreSQL queries used for adding and removing connections
+# The PostgreSQL queries used for adding, removing, and updating
+# connections
 COUNT_QUERY = psycopg.sql.SQL(
     "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s AND {value_field} = %s"
 ).format(
@@ -134,6 +135,16 @@ INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
     proxy_port_field=psycopg.sql.Identifier("proxy_port"),
     proxy_hostname_field=psycopg.sql.Identifier("proxy_hostname"),
     proxy_encryption_method_field=psycopg.sql.Identifier("proxy_encryption_method"),
+    id_field=psycopg.sql.Identifier("connection_id"),
+)
+UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL(
+    """UPDATE {table}
+    SET {name_field} = %s
+    WHERE {id_field} = %s
+    AND {name_field} IS DISTINCT FROM %s;"""
+).format(
+    table=psycopg.sql.Identifier("guacamole_connection"),
+    name_field=psycopg.sql.Identifier("connection_name"),
     id_field=psycopg.sql.Identifier("connection_id"),
 )
 INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL(
@@ -562,6 +573,44 @@ def add_instance_connection(
     db_connection.commit()
 
 
+def update_connection_name(db_connection, connection_id, connection_name):
+    """Update the name associated with a connection."""
+    with db_connection.cursor() as cursor:
+        logging.debug(
+            "Updating connection name for connection_id %s to %s.",
+            connection_id,
+            connection_name,
+        )
+        cursor.execute(
+            UPDATE_CONNECTION_NAME_QUERY,
+            (connection_name, connection_id, connection_name),
+        )
+
+    # Commit all pending transactions to the database
+    db_connection.commit()
+
+
+def update_instance_connections(db_connection, instance):
+    """Update the name of all connections corresponding to the EC2 instance."""
+    instance_id = instance.id
+    connection_name = get_connection_name(instance)
+    logging.debug("Updating connection names for %s.", instance_id)
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            IDS_QUERY,
+            (
+                "instance_id",
+                instance_id,
+            ),
+        )
+        for record in cursor.fetchall():
+            connection_id = record["connection_id"]
+            update_connection_name(db_connection, connection_id, connection_name)
+
+    # Commit all pending transactions to the database
+    db_connection.commit()
+
+
 def remove_connection(db_connection, connection_id):
     """Remove all connections corresponding to the specified ID."""
     logging.debug("Removing connection entries for %s.", connection_id)
@@ -640,9 +689,15 @@ def process_instance(
                 entity_id,
             )
         else:
+            # The instance already exists in the database, so we will
+            # just update the connection name in case IPs have changed.
             logging.debug(
                 "Connection for %s already exists in the database.", instance_id
             )
+            logging.info(
+                "Updating connection name for %s in case IPs have changed.", instance_id
+            )
+            update_instance_connections(db_connection, instance)
     elif state in remove_instance_states:
         logging.info(
             "Instance %s is in state %s and will be removed if present.",
