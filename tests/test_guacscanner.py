@@ -7,8 +7,8 @@ import sys
 from unittest.mock import patch
 
 # Third-Party Libraries
-# import boto3
-# from moto import mock_aws
+import boto3
+from moto import mock_aws
 import pytest
 
 # cisagov Libraries
@@ -123,54 +123,54 @@ def test_bad_log_level():
         assert return_code == 1, "main() should exit with error"
 
 
-# @mock_aws
-# def test_addition_of_guacuser():
-#     """Verify that adding the guacuser works as expected."""
-#     # Create a VPC
-#     ec2 = boto3.client("ec2", "us-east-1")
-#     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-#     vpc_id = vpc["Vpc"]["VpcId"]
+@mock_aws
+def test_addition_of_guacuser(postgres_container, postgres_db_name, postgres_username):
+    """Verify that adding the guacuser works as expected."""
+    # Create a VPC
+    ec2 = boto3.client("ec2", "us-east-1")
+    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+    vpc_id = vpc["Vpc"]["VpcId"]
 
-#     # Mock the PostgreSQL database connection
-#     mock_connection = MagicMock(
-#         name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-#     )
-#     mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-#     mock_cursor.__enter__.return_value = mock_cursor
-#     mock_cursor.fetchone.side_effect = [
-#         # Checking to see if guacuser exists and then adding it
-#         {"count": 0},
-#         {"entity_id": 1},
-#     ]
-#     mock_connection.__enter__.return_value = mock_connection
-#     mock_connection.cursor.return_value = mock_cursor
+    with patch.object(
+        sys,
+        "argv",
+        [
+            "--log-level=debug",
+            "--oneshot",
+            "--postgres-hostname=localhost",
+            "--postgres-password-file=src/secrets/postgres-password",
+            "--postgres-username-file=src/secrets/postgres-username",
+            "--private-ssh-key=dummy_key",
+            "--rdp-password=dummy_rdp_password",
+            "--rdp-username=dummy_rdp_username",
+            "--vnc-password=dummy_vnc_password",
+            "--vnc-username=dummy_vnc_username",
+            f"--vpc-id={vpc_id}",
+            "--windows-sftp-base=/C:/Users/dummy_user",
+        ],
+    ):
+        guacscanner.guacscanner.main()
 
-#     with patch.object(
-#         sys,
-#         "argv",
-#         [
-#             "--log-level=debug",
-#             "--oneshot",
-#             "--postgres-password=dummy_db_password",
-#             "--postgres-username=dummy_db_username",
-#             "--private-ssh-key=dummy_key",
-#             "--rdp-password=dummy_rdp_password",
-#             "--rdp-username=dummy_rdp_username",
-#             "--vnc-password=dummy_vnc_password",
-#             "--vnc-username=dummy_vnc_username",
-#             f"--vpc-id={vpc_id}",
-#             "--windows-sftp-base=/C:/Users/dummy_user",
-#         ],
-#     ):
-#         with patch.object(
-#             psycopg, "connect", return_value=mock_connection
-#         ) as mock_connect:
-#             guacscanner.guacscanner.main()
-#             mock_connect.assert_called_once()
-#             mock_connection.cursor.assert_called()
-#             mock_connection.commit.assert_called()
-#             mock_cursor.fetchone.assert_called()
-#             mock_cursor.execute.assert_called()
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT name FROM guacamole_entity;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "guacadmin" in response
+        assert "guacuser" in response
+
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT COUNT(*) FROM guacamole_user;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "(1 row)" in response
 
 
 # @mock_aws
