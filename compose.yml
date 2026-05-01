@@ -47,7 +47,7 @@ services:
       POSTGRES_USER_FILE: /run/secrets/postgres-username
     image: postgres:18
     ports:
-      - 5432:5432/tcp
+      - 127.0.0.1:5432:5432/tcp
     secrets:
       - source: postgres_password
         target: postgres-password
