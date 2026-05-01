@@ -849,7 +849,8 @@ def main() -> None:
     keep_looping = True
     guacuser_id = None
     while keep_looping:
-        time.sleep(validated_args["--sleep"])
+        if not validated_args["--oneshot"]:
+            time.sleep(validated_args["--sleep"])
 
         try:
             db_connection = psycopg.connect(
