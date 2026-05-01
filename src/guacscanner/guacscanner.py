@@ -8,7 +8,7 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--region=REGION] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID] [--windows-sftp-base=SFTPBASE|--windows-sftp-base-file=FILENAME]
+  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-hostname=HOSTNAME] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--region=REGION] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID] [--windows-sftp-base=SFTPBASE|--windows-sftp-base-file=FILENAME]
   guacscanner (-h | --help)
 
 Options:
@@ -17,6 +17,7 @@ Options:
                          the specified value.  Valid values are "debug", "info",
                          "warning", "error", and "critical". [default: info]
   --oneshot              If present then the loop that adds (removes) connections for new (terminated) instances will only be run once.
+  --postgres-hostname=HOSTNAME    If specified then the specified value will be used as the hostname when connecting to the PostgreSQL database. [default: postgres]
   --postgres-password=PASSWORD    If specified then the specified value will be used as the password when connecting to the PostgreSQL database.  Otherwise, the password will be read from a local file.
   --postgres-password-file=FILENAME    The file from which the PostgreSQL password will be read. [default: /run/secrets/postgres-password]
   --postgres-username=USERNAME    If specified then the specified value will be used when connecting to the PostgreSQL database.  Otherwise, the username will be read from a local file.
@@ -75,7 +76,6 @@ DEFAULT_ADD_INSTANCE_STATES = [
 DEFAULT_PASSWORD_LENGTH = 32
 DEFAULT_PASSWORD_SALT_LENGTH = 32
 DEFAULT_POSTGRES_DB_NAME = "guacamole_db"
-DEFAULT_POSTGRES_HOSTNAME = "postgres"
 DEFAULT_POSTGRES_PORT = 5432
 DEFAULT_REMOVE_INSTANCE_STATES = [
     "terminated",
@@ -776,12 +776,13 @@ def main() -> None:
 
     add_instance_states = DEFAULT_ADD_INSTANCE_STATES
     postgres_db_name = DEFAULT_POSTGRES_DB_NAME
-    postgres_hostname = DEFAULT_POSTGRES_HOSTNAME
     postgres_port = DEFAULT_POSTGRES_PORT
     remove_instance_states = DEFAULT_REMOVE_INSTANCE_STATES
 
     oneshot = validated_args["--oneshot"]
     logging.debug("oneshot is %s.", oneshot)
+
+    postgres_hostname = validated_args["--postgres-hostname"]
 
     postgres_password = validated_args["--postgres-password"]
     if postgres_password is None:
