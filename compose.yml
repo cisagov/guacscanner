@@ -108,3 +108,9 @@ services:
     networks:
       metadata:
         ipv4_address: 169.254.169.254
+
+  # Moto AWS mock library running in server mode
+  motoserver:
+    image: motoserver/moto:latest
+    ports:
+      - 127.0.0.1:5000:5000/tcp
