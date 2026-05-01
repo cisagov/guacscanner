@@ -1,0 +1,110 @@
+---
+# This Docker composition file is used to stand up an Apache Guacamole server
+# with a PostgreSQL database backend and the guacscanner utility for
+# auto-discovering and adding connections.
+
+name: guacscanner-test
+
+networks:
+  metadata:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 169.254.0.0/16
+
+secrets:
+  postgres_password:
+    file: ./src/secrets/postgres-password
+  postgres_username:
+    file: ./src/secrets/postgres-username
+  private_ssh_key:
+    file: ./src/secrets/private-ssh-key
+  rdp_password:
+    file: ./src/secrets/rdp-password
+  rdp_username:
+    file: ./src/secrets/rdp-username
+  vnc_password:
+    file: ./src/secrets/vnc-password
+  vnc_username:
+    file: ./src/secrets/vnc-username
+  windows_sftp_base:
+    file: ./src/secrets/windows-sftp-base
+
+volumes:
+  dbdata:
+  initdb:
+
+services:
+  guacd:
+    container_name: guacd
+    image: guacamole/guacd:1.6.0
+
+  postgres:
+    container_name: postgres
+    environment:
+      POSTGRES_DB: guacamole_db
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres-password
+      POSTGRES_USER_FILE: /run/secrets/postgres-username
+    image: postgres:18
+    ports:
+      - 5432:5432/tcp
+    secrets:
+      - source: postgres_password
+        target: postgres-password
+      - source: postgres_username
+        target: postgres-username
+    volumes:
+      - read_only: true
+        source: initdb
+        target: /docker-entrypoint-initdb.d
+        type: volume
+      - source: dbdata
+        target: /var/lib/postgresql
+        type: volume
+
+  guacamole:
+    cap_add:
+      # Required to allow listening on privileged port 80
+      - NET_BIND_SERVICE
+    command:
+      - /bin/sh
+      - -c
+      - |
+        export POSTGRESQL_USERNAME=$$(cat /run/secrets/postgres-username);
+        export POSTGRESQL_PASSWORD=$$(cat /run/secrets/postgres-password);
+        /opt/guacamole/bin/entrypoint.sh
+    container_name: guacamole
+    depends_on:
+      - guacd
+      - postgres
+    environment:
+      GUACD_HOSTNAME: guacd
+      GUACD_PORT: 4822
+      HTTP_AUTH_ENABLED: "true"
+      POSTGRESQL_DATABASE: guacamole_db
+      POSTGRESQL_ENABLED: "true"
+      POSTGRESQL_HOSTNAME: postgres
+      POSTGRESQL_PORT: 5432
+    image: guacamole/guacamole:1.6.0
+    ports:
+      - 127.0.0.1:8080:8080/tcp
+    secrets:
+      - source: postgres_password
+        target: postgres-password
+      - source: postgres_username
+        target: postgres-username
+    volumes:
+      - read_only: true
+        source: initdb
+        target: /opt/guacamole/extensions/guacamole-auth-jdbc/postgresql/schema
+        type: volume
+
+  # AWS EC2 Metadata Mock
+  aemm:
+    command:
+      - --port
+      - "80"
+    image: public.ecr.aws/aws-ec2/amazon-ec2-metadata-mock:v1.13.0
+    networks:
+      metadata:
+        ipv4_address: 169.254.169.254
