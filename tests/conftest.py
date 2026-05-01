@@ -40,6 +40,21 @@ def postgres_container(dockerc):
     return dockerc.compose.ps(services=["postgres"], all=True)[0]
 
 
+@pytest.fixture(scope="session")
+def postgres_db_name():
+    """Return string containing the DB name to use when connecting to the postgres instance running in the composition."""
+    return "guacamole_db"
+
+
+@pytest.fixture(scope="session")
+def postgres_username():
+    """Return string containing the username to use when connecting to the postgres instance running in the composition."""
+    with open("src/secrets/postgres-username") as file:
+        postgres_username = file.read().strip()
+
+    return postgres_username
+
+
 def pytest_addoption(parser):
     """Add new commandline options to pytest."""
     parser.addoption(
