@@ -72,9 +72,8 @@ def test_release_version():
     ), "RELEASE_TAG does not match the project version"
 
 
-@mock_aws
-@pytest.mark.parametrize("level", log_levels)
-def test_log_levels(level):
+@pytest.mark.parametrize("level", LOG_LEVELS)
+def test_log_levels(level, postgres_container):
     """Validate commandline log-level arguments."""
     with patch.object(
         sys,
@@ -82,8 +81,9 @@ def test_log_levels(level):
         [
             f"--log-level={level}",
             "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
+            "--postgres-hostname=localhost",
+            "--postgres-password-file=src/secrets/postgres-password",
+            "--postgres-username-file=src/secrets/postgres-username",
             "--private-ssh-key=dummy_key",
             "--rdp-password=dummy_rdp_password",
             "--rdp-username=dummy_rdp_username",
@@ -94,24 +94,23 @@ def test_log_levels(level):
         ],
     ):
         with patch.object(logging.root, "handlers", []):
-            with patch.object(psycopg, "connect", return_value=MagicMock()):
+            assert (
+                logging.root.hasHandlers() is False
+            ), "root logger should not have handlers yet"
+            return_code = None
+            try:
+                guacscanner.guacscanner.main()
+            except SystemExit as sys_exit:
+                return_code = sys_exit.code
+                assert return_code is None, "main() should return success"
                 assert (
-                    logging.root.hasHandlers() is False
-                ), "root logger should not have handlers yet"
-                return_code = None
-                try:
-                    guacscanner.guacscanner.main()
-                except SystemExit as sys_exit:
-                    return_code = sys_exit.code
-                    assert return_code is None, "main() should return success"
-                    assert (
-                        logging.root.hasHandlers() is True
-                    ), "root logger should now have a handler"
-                    assert (
-                        logging.getLevelName(logging.root.getEffectiveLevel())
-                        == level.upper()
-                    ), f"root logger level should be set to {level.upper()}"
-                    assert return_code is None, "main() should return success"
+                    logging.root.hasHandlers() is True
+                ), "root logger should now have a handler"
+                assert (
+                    logging.getLevelName(logging.root.getEffectiveLevel())
+                    == level.upper()
+                ), f"root logger level should be set to {level.upper()}"
+                assert return_code is None, "main() should return success"
 
 
 def test_bad_log_level():
