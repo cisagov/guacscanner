@@ -15,13 +15,17 @@ import pytest
 # cisagov Libraries
 import guacscanner
 
-log_levels = (
-    "debug",
-    "info",
-    "warning",
-    "error",
-    "critical",
-)
+LOG_LEVELS: list[str] = []
+if sys.version_info >= (3, 11):
+    LOG_LEVELS = [*logging.getLevelNamesMapping()]
+else:
+    # The logging.getLevelNamesMapping method was only introduced in
+    # Python 3.11.
+    LOG_LEVELS = [
+        logging.getLevelName(x)
+        for x in range(0, 101)
+        if not logging.getLevelName(x).startswith("Level")
+    ]
 
 # define sources of version strings
 RELEASE_TAG = os.getenv("RELEASE_TAG")
