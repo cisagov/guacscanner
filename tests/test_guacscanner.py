@@ -4,7 +4,6 @@
 import logging
 import os
 import sys
-from unittest.mock import patch
 
 # Third-Party Libraries
 import boto3
@@ -36,27 +35,27 @@ DUMMY_VPC_ID = "vpc-0123456789abcdef0"
 class TestVersion:
     """Tests related to project version."""
 
-    def test_stdout_version(self, capsys):
+    def test_stdout_version(self, capsys, monkeypatch):
         """Verify that version string sent to stdout agrees with the module version."""
         with pytest.raises(SystemExit):
-            with patch.object(sys, "argv", ["bogus", "--version"]):
-                guacscanner.guacscanner.main()
+            monkeypatch.setattr(sys, "argv", ["bogus", "--version"])
+            guacscanner.guacscanner.main()
         captured = capsys.readouterr()
         assert (
             captured.out == f"{PROJECT_VERSION}\n"
         ), "standard output by '--version' should agree with module.__version__"
 
-    def test_running_as_module(self, capsys):
+    def test_running_as_module(self, capsys, monkeypatch):
         """Verify that the __main__.py file loads correctly."""
         with pytest.raises(SystemExit):
-            with patch.object(sys, "argv", ["bogus", "--version"]):
-                # F401 is a "Module imported but unused" warning. This import
-                # emulates how this project would be run as a module. The only thing
-                # being done by __main__ is importing the main entrypoint of the
-                # package and running it, so there is nothing to use from this
-                # import. As a result, we can safely ignore this warning.
-                # cisagov Libraries
-                import guacscanner.__main__  # noqa: F401
+            monkeypatch.setattr(sys, "argv", ["bogus", "--version"])
+            # F401 is a "Module imported but unused" warning. This import
+            # emulates how this project would be run as a module. The only thing
+            # being done by __main__ is importing the main entrypoint of the
+            # package and running it, so there is nothing to use from this
+            # import. As a result, we can safely ignore this warning.
+            # cisagov Libraries
+            import guacscanner.__main__  # noqa: F401
         captured = capsys.readouterr()
         assert (
             captured.out == f"{PROJECT_VERSION}\n"
@@ -77,9 +76,9 @@ class TestLogLevels:
 
     @pytest.mark.parametrize("level", LOG_LEVELS)
     @pytest.mark.usefixtures("dockerc")
-    def test_log_levels(self, level):
+    def test_log_levels(self, level, monkeypatch):
         """Validate commandline log-level arguments."""
-        with patch.object(
+        monkeypatch.setattr(
             sys,
             "argv",
             [
@@ -96,35 +95,34 @@ class TestLogLevels:
                 f"--vpc-id={DUMMY_VPC_ID}",
                 "--windows-sftp-base=/C:/Users/dummy_user",
             ],
-        ):
-            with patch.object(logging.root, "handlers", []):
-                assert (
-                    logging.root.hasHandlers() is False
-                ), "root logger should not have handlers yet"
-                return_code = None
-                try:
-                    guacscanner.guacscanner.main()
-                except SystemExit as sys_exit:
-                    return_code = sys_exit.code
-                    assert return_code is None, "main() should return success"
-                    assert (
-                        logging.root.hasHandlers() is True
-                    ), "root logger should now have a handler"
-                    assert (
-                        logging.getLevelName(logging.root.getEffectiveLevel())
-                        == level.upper()
-                    ), f"root logger level should be set to {level.upper()}"
-                    assert return_code is None, "main() should return success"
+        )
+        monkeypatch.setattr(logging.root, "handlers", [])
+        assert (
+            logging.root.hasHandlers() is False
+        ), "root logger should not have handlers yet"
+        return_code = None
+        try:
+            guacscanner.guacscanner.main()
+        except SystemExit as sys_exit:
+            return_code = sys_exit.code
+            assert return_code is None, "main() should return success"
+            assert (
+                logging.root.hasHandlers() is True
+            ), "root logger should now have a handler"
+            assert (
+                logging.getLevelName(logging.root.getEffectiveLevel()) == level.upper()
+            ), f"root logger level should be set to {level.upper()}"
+            assert return_code is None, "main() should return success"
 
-    def test_bad_log_level(self):
+    def test_bad_log_level(self, monkeypatch):
         """Validate bad log-level argument returns error."""
-        with patch.object(sys, "argv", ["bogus", "--log-level=emergency"]):
-            return_code = None
-            try:
-                guacscanner.guacscanner.main()
-            except SystemExit as sys_exit:
-                return_code = sys_exit.code
-            assert return_code == 1, "main() should exit with error"
+        monkeypatch.setattr(sys, "argv", ["bogus", "--log-level=emergency"])
+        return_code = None
+        try:
+            guacscanner.guacscanner.main()
+        except SystemExit as sys_exit:
+            return_code = sys_exit.code
+        assert return_code == 1, "main() should exit with error"
 
 
 @mock_aws
@@ -132,7 +130,7 @@ class TestGuacuser:
     """Tests related to the addition of the guacuser."""
 
     def test_addition_of_guacuser(
-        self, postgres_container, postgres_db_name, postgres_username
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected."""
         # Create a VPC
@@ -140,7 +138,7 @@ class TestGuacuser:
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
 
-        with patch.object(
+        monkeypatch.setattr(
             sys,
             "argv",
             [
@@ -157,29 +155,29 @@ class TestGuacuser:
                 f"--vpc-id={vpc_id}",
                 "--windows-sftp-base=/C:/Users/dummy_user",
             ],
-        ):
-            guacscanner.guacscanner.main()
+        )
+        guacscanner.guacscanner.main()
 
-            response = postgres_container.execute(
-                command=[
-                    "psql",
-                    "--command=SELECT name FROM guacamole_entity;",
-                    f"--dbname={postgres_db_name}",
-                    f"--username={postgres_username}",
-                ]
-            )
-            assert "guacadmin" in response
-            assert "guacuser" in response
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT name FROM guacamole_entity;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "guacadmin" in response
+        assert "guacuser" in response
 
-            response = postgres_container.execute(
-                command=[
-                    "psql",
-                    "--command=SELECT COUNT(*) FROM guacamole_user;",
-                    f"--dbname={postgres_db_name}",
-                    f"--username={postgres_username}",
-                ]
-            )
-            assert "(1 row)" in response
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT COUNT(*) FROM guacamole_user;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "(1 row)" in response
 
 
 # @mock_aws
