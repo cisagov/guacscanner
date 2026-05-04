@@ -76,7 +76,6 @@ test = [
     "moto[ec2] >= 5.0.0",
     "pre-commit",
     "pytest-cov",
-    "pytest-env",
     "pytest",
     "python-on-whales",
 ]
@@ -134,11 +133,6 @@ profile = "black"
 # did not pass, display code coverage results, and enable debug
 # logging.
 addopts = "--verbose -ra --cov --log-cli-level=DEBUG"
-env = [
-    # Necessary for moto to connect to the server running in the
-    # Docker composition.
-    "TEST_SERVER_MODE=true",
-]
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"], content-type = "text/markdown"}

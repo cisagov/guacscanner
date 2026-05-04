@@ -5,13 +5,6 @@
 
 name: guacscanner-test
 
-networks:
-  metadata:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 169.254.0.0/16
-
 secrets:
   postgres_password:
     file: ./src/secrets/postgres-password
@@ -98,19 +91,3 @@ services:
         source: initdb
         target: /opt/guacamole/extensions/guacamole-auth-jdbc/postgresql/schema
         type: volume
-
-  # AWS EC2 Metadata Mock
-  aemm:
-    command:
-      - --port
-      - "80"
-    image: public.ecr.aws/aws-ec2/amazon-ec2-metadata-mock:v1.13.0
-    networks:
-      metadata:
-        ipv4_address: 169.254.169.254
-
-  # Moto AWS mock library running in server mode
-  motoserver:
-    image: motoserver/moto:latest
-    ports:
-      - 127.0.0.1:5000:5000/tcp
