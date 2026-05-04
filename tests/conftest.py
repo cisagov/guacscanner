@@ -11,7 +11,7 @@ from python_on_whales import docker
 @pytest.fixture(scope="class")
 def dockerc():
     """Start up the Docker composition."""
-    docker.compose.up(detach=True)
+    docker.compose.up(detach=True, wait=True, wait_timeout=60)
     yield docker
     # Since this Docker composition includes data volumes, we want to
     # remove volumes as well when we bring the composition down so we
