@@ -16,10 +16,6 @@ volumes:
   initdb:
 
 services:
-  guacd:
-    container_name: guacd
-    image: guacamole/guacd:1.6.0
-
   postgres:
     container_name: postgres
     environment:
@@ -56,7 +52,6 @@ services:
         /opt/guacamole/bin/entrypoint.sh
     container_name: guacamole
     depends_on:
-      - guacd
       - postgres
     environment:
       GUACD_HOSTNAME: guacd
