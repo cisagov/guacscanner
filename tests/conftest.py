@@ -8,7 +8,7 @@ import pytest
 from python_on_whales import docker
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def dockerc():
     """Start up the Docker composition."""
     docker.compose.up(detach=True)
@@ -19,21 +19,21 @@ def dockerc():
     docker.compose.down(volumes=True)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def guacamole_container(dockerc):
     """Return the guacamole container from the Docker composition."""
     # find the container by name even if it is stopped already
     return dockerc.compose.ps(services=["guacamole"], all=True)[0]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def guacd_container(dockerc):
     """Return the guacd container from the Docker composition."""
     # find the container by name even if it is stopped already
     return dockerc.compose.ps(services=["guacd"], all=True)[0]
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="class")
 def postgres_container(dockerc):
     """Return the postgres container from the Docker composition."""
     # find the container by name even if it is stopped already
