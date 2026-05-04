@@ -257,7 +257,6 @@ class TestLinuxInstance:
                 f"--username={postgres_username}",
             ]
         )
-        print(response)
         assert "Linux" in response
         assert instance_id in response
 
