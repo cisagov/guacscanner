@@ -132,7 +132,7 @@ class TestGuacuser:
     def test_addition_of_guacuser(
         self, monkeypatch, postgres_container, postgres_db_name, postgres_username
     ):
-        """Verify that adding the guacuser works as expected."""
+        """Verify that adding the guacuser works as expected when it does not yet exist."""
         # Create a VPC
         ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
@@ -179,130 +179,97 @@ class TestGuacuser:
         )
         assert "(1 row)" in response
 
-
-# @mock_aws
-# def test_guacuser_already_exists():
-#     """Verify that the case where the guacuser already exists works as expected."""
-#     # Create a VPC
-#     ec2 = boto3.client("ec2", "us-east-1")
-#     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-#     vpc_id = vpc["Vpc"]["VpcId"]
-
-#     # Mock the PostgreSQL database connection
-#     mock_connection = MagicMock(
-#         name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-#     )
-#     mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-#     mock_cursor.__enter__.return_value = mock_cursor
-#     mock_cursor.fetchone.side_effect = [
-#         # Checking to see if guacuser exists and then fetching its ID
-#         {"count": 1},
-#         {"entity_id": 1},
-#     ]
-#     mock_connection.__enter__.return_value = mock_connection
-#     mock_connection.cursor.return_value = mock_cursor
-
-#     with patch.object(
-#         sys,
-#         "argv",
-#         [
-#             "--log-level=debug",
-#             "--oneshot",
-#             "--postgres-password=dummy_db_password",
-#             "--postgres-username=dummy_db_username",
-#             "--private-ssh-key=dummy_key",
-#             "--rdp-password=dummy_rdp_password",
-#             "--rdp-username=dummy_rdp_username",
-#             "--vnc-password=dummy_vnc_password",
-#             "--vnc-username=dummy_vnc_username",
-#             f"--vpc-id={vpc_id}",
-#             "--windows-sftp-base=/C:/Users/dummy_user",
-#         ],
-#     ):
-#         with patch.object(
-#             psycopg, "connect", return_value=mock_connection
-#         ) as mock_connect:
-#             guacscanner.guacscanner.main()
-#             mock_connect.assert_called_once()
-#             mock_connection.cursor.assert_called()
-#             mock_connection.commit.assert_called()
-#             mock_cursor.fetchone.assert_called()
-#             mock_cursor.execute.assert_called()
+    def test_addition_of_guacuser_already_exists(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that adding the guacuser works as expected when it already exists."""
+        self.test_addition_of_guacuser(
+            monkeypatch, postgres_container, postgres_db_name, postgres_username
+        )
 
 
-# @mock_aws
-# def test_new_linux_instance():
-#     """Verify that adding a new Linux instance works as expected."""
-#     # Create and populate a VPC with an EC2 instance
-#     #
-#     # TODO: Create a test fixture to reduce duplication of this EC2
-#     # setup code.  See cisagov/guacscanner#7 for more details.
-#     ec2 = boto3.client("ec2", "us-east-1")
-#     vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-#     vpc_id = vpc["Vpc"]["VpcId"]
-#     subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
-#     subnet_id = subnet["Subnet"]["SubnetId"]
-#     amis = ec2.describe_images(
-#         Filters=[
-#             {"Name": "Name", "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"]}
-#         ]
-#     )
-#     ami = amis["Images"][0]
-#     ami_id = ami["ImageId"]
-#     ec2.run_instances(
-#         ImageId=ami_id,
-#         SubnetId=subnet_id,
-#         MaxCount=1,
-#         MinCount=1,
-#         TagSpecifications=[
-#             {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Linux"}]}
-#         ],
-#     )
+@mock_aws
+class TestLinuxInstance:
+    """Tests related to Linux instances."""
 
-#     # Mock the PostgreSQL database connection
-#     mock_connection = MagicMock(
-#         name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-#     )
-#     mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-#     mock_cursor.__enter__.return_value = mock_cursor
-#     mock_cursor.fetchone.side_effect = [
-#         # Checking to see if guacuser exists and then adding it
-#         {"count": 0},
-#         {"entity_id": 1},
-#         # Checking to see if the connection exists and then adding it
-#         {"count": 0},
-#         {"connection_id": 1},
-#     ]
-#     mock_connection.__enter__.return_value = mock_connection
-#     mock_connection.cursor.return_value = mock_cursor
+    def test_new_linux_instance(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that adding a new Linux instance works as expected."""
+        # Create and populate a VPC with an EC2 instance
+        #
+        # TODO: Create a test fixture to reduce duplication of this EC2
+        # setup code.  See cisagov/guacscanner#7 for more details.
+        ec2 = boto3.client("ec2", "us-east-1")
+        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+        vpc_id = vpc["Vpc"]["VpcId"]
+        subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
+        subnet_id = subnet["Subnet"]["SubnetId"]
+        amis = ec2.describe_images(
+            Filters=[
+                {
+                    "Name": "Name",
+                    "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"],
+                }
+            ]
+        )
+        ami = amis["Images"][0]
+        ami_id = ami["ImageId"]
+        response = ec2.run_instances(
+            ImageId=ami_id,
+            SubnetId=subnet_id,
+            MaxCount=1,
+            MinCount=1,
+            TagSpecifications=[
+                {
+                    "ResourceType": "instance",
+                    "Tags": [{"Key": "Name", "Value": "Linux"}],
+                }
+            ],
+        )
+        instance_id = response["Instances"][0]["InstanceId"]
 
-#     with patch.object(
-#         sys,
-#         "argv",
-#         [
-#             "--log-level=debug",
-#             "--oneshot",
-#             "--postgres-password=dummy_db_password",
-#             "--postgres-username=dummy_db_username",
-#             "--private-ssh-key=dummy_key",
-#             "--rdp-password=dummy_rdp_password",
-#             "--rdp-username=dummy_rdp_username",
-#             "--vnc-password=dummy_vnc_password",
-#             "--vnc-username=dummy_vnc_username",
-#             f"--vpc-id={vpc_id}",
-#             "--windows-sftp-base=/C:/Users/dummy_user",
-#         ],
-#     ):
-#         with patch.object(
-#             psycopg, "connect", return_value=mock_connection
-#         ) as mock_connect:
-#             guacscanner.guacscanner.main()
-#             mock_connect.assert_called_once()
-#             mock_connection.cursor.assert_called()
-#             mock_connection.commit.assert_called()
-#             mock_cursor.fetchone.assert_called()
-#             mock_cursor.execute.assert_called()
-#             mock_cursor.executemany.assert_called()
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=src/secrets/postgres-password",
+                "--postgres-username-file=src/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
+        guacscanner.guacscanner.main()
+
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT connection_name FROM guacamole_connection;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        print(response)
+        assert "Linux" in response
+        assert instance_id in response
+
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT COUNT(*) FROM guacamole_connection;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "(1 row)" in response
 
 
 # @mock_aws
