@@ -120,13 +120,11 @@ ALL_IDS_QUERY = psycopg.sql.SQL(
     name_field=psycopg.sql.Identifier("attribute_name"),
     value_field=psycopg.sql.Identifier("attribute_value"),
 )
-INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_CONNECTION_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {name_field}, {protocol_field}, {max_connections_field},
     {max_connections_per_user_field}, {proxy_port_field}, {proxy_hostname_field},
     {proxy_encryption_method_field})
-    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {id_field};"""
-).format(
+    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {id_field};""").format(
     table=psycopg.sql.Identifier("guacamole_connection"),
     name_field=psycopg.sql.Identifier("connection_name"),
     protocol_field=psycopg.sql.Identifier("protocol"),
@@ -137,31 +135,25 @@ INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
     proxy_encryption_method_field=psycopg.sql.Identifier("proxy_encryption_method"),
     id_field=psycopg.sql.Identifier("connection_id"),
 )
-UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL(
-    """UPDATE {table}
+UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL("""UPDATE {table}
     SET {name_field} = %s
     WHERE {id_field} = %s
-    AND {name_field} IS DISTINCT FROM %s;"""
-).format(
+    AND {name_field} IS DISTINCT FROM %s;""").format(
     table=psycopg.sql.Identifier("guacamole_connection"),
     name_field=psycopg.sql.Identifier("connection_name"),
     id_field=psycopg.sql.Identifier("connection_id"),
 )
-INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table}
+INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL("""INSERT INTO {table}
     ({id_field}, {parameter_name_field}, {parameter_value_field})
-    VALUES (%s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_connection_parameter"),
     id_field=psycopg.sql.Identifier("connection_id"),
     parameter_name_field=psycopg.sql.Identifier("parameter_name"),
     parameter_value_field=psycopg.sql.Identifier("parameter_value"),
 )
-INSERT_CONNECTION_ATTRIBUTE_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table}
+INSERT_CONNECTION_ATTRIBUTE_QUERY = psycopg.sql.SQL("""INSERT INTO {table}
     ({id_field}, {attribute_name_field}, {attribute_value_field})
-    VALUES (%s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_connection_attribute"),
     id_field=psycopg.sql.Identifier("connection_id"),
     attribute_name_field=psycopg.sql.Identifier("attribute_name"),
@@ -203,21 +195,17 @@ ENTITY_ID_QUERY = psycopg.sql.SQL(
     name_field=psycopg.sql.Identifier("name"),
     type_field=psycopg.sql.Identifier("type"),
 )
-INSERT_ENTITY_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_ENTITY_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {name_field}, {type_field})
-    VALUES (%s, %s) RETURNING {id_field};"""
-).format(
+    VALUES (%s, %s) RETURNING {id_field};""").format(
     table=psycopg.sql.Identifier("guacamole_entity"),
     name_field=psycopg.sql.Identifier("name"),
     type_field=psycopg.sql.Identifier("type"),
     id_field=psycopg.sql.Identifier("entity_id"),
 )
-INSERT_USER_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_USER_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {id_field}, {hash_field}, {salt_field}, {date_field})
-    VALUES (%s, %s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_user"),
     id_field=psycopg.sql.Identifier("entity_id"),
     hash_field=psycopg.sql.Identifier("password_hash"),
@@ -226,11 +214,9 @@ INSERT_USER_QUERY = psycopg.sql.SQL(
 )
 # The PostgreSQL queries used to add and remove connection
 # permissions
-INSERT_CONNECTION_PERMISSION_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_CONNECTION_PERMISSION_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {entity_id_field}, {connection_id_field}, {permission_field})
-    VALUES (%s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_connection_permission"),
     entity_id_field=psycopg.sql.Identifier("entity_id"),
     connection_id_field=psycopg.sql.Identifier("connection_id"),
