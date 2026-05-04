@@ -787,42 +787,42 @@ def main() -> None:
     postgres_password = validated_args["--postgres-password"]
     if postgres_password is None:
         with open(validated_args["--postgres-password-file"]) as file:
-            postgres_password = file.read()
+            postgres_password = file.read().strip()
 
     postgres_username = validated_args["--postgres-username"]
     if postgres_username is None:
         with open(validated_args["--postgres-username-file"]) as file:
-            postgres_username = file.read()
+            postgres_username = file.read().strip()
 
     rdp_password = validated_args["--rdp-password"]
     if rdp_password is None:
         with open(validated_args["--rdp-password-file"]) as file:
-            rdp_password = file.read()
+            rdp_password = file.read().strip()
 
     rdp_username = validated_args["--rdp-username"]
     if rdp_username is None:
         with open(validated_args["--rdp-username-file"]) as file:
-            rdp_username = file.read()
+            rdp_username = file.read().strip()
 
     vnc_password = validated_args["--vnc-password"]
     if vnc_password is None:
         with open(validated_args["--vnc-password-file"]) as file:
-            vnc_password = file.read()
+            vnc_password = file.read().strip()
 
     vnc_username = validated_args["--vnc-username"]
     if vnc_username is None:
         with open(validated_args["--vnc-username-file"]) as file:
-            vnc_username = file.read()
+            vnc_username = file.read().strip()
 
     private_ssh_key = validated_args["--private-ssh-key"]
     if private_ssh_key is None:
         with open(validated_args["--private-ssh-key-file"]) as file:
-            private_ssh_key = file.read()
+            private_ssh_key = file.read().strip()
 
     windows_sftp_base = validated_args["--windows-sftp-base"]
     if windows_sftp_base is None:
         with open(validated_args["--windows-sftp-base-file"]) as file:
-            windows_sftp_base = file.read()
+            windows_sftp_base = file.read().strip()
 
     db_connection_string = f"user={postgres_username} password={postgres_password} host={postgres_hostname} port={postgres_port} dbname={postgres_db_name}"
 
