@@ -10,18 +10,6 @@ secrets:
     file: ./src/secrets/postgres-password
   postgres_username:
     file: ./src/secrets/postgres-username
-  private_ssh_key:
-    file: ./src/secrets/private-ssh-key
-  rdp_password:
-    file: ./src/secrets/rdp-password
-  rdp_username:
-    file: ./src/secrets/rdp-username
-  vnc_password:
-    file: ./src/secrets/vnc-password
-  vnc_username:
-    file: ./src/secrets/vnc-username
-  windows_sftp_base:
-    file: ./src/secrets/windows-sftp-base
 
 volumes:
   dbdata:
