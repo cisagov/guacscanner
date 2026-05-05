@@ -136,7 +136,7 @@ class TestGuacuser:
     def test_addition_of_guacuser(
         self, monkeypatch, postgres_container, postgres_db_name, postgres_username
     ):
-        """Verify that adding the guacuser works as expected when it does not yet exist."""
+        """Verify that adding the guacuser works as expected."""
         # Create a VPC
         ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")

@@ -34,13 +34,13 @@ def postgres_container(dockerc):
 
 @pytest.fixture(scope="session")
 def postgres_db_name():
-    """Return string containing the DB name to use when connecting to the postgres instance running in the composition."""
+    """Return the DB name to use when connecting to the postgres instance."""
     return "guacamole_db"
 
 
 @pytest.fixture(scope="session")
 def postgres_username():
-    """Return string containing the username to use when connecting to the postgres instance running in the composition."""
+    """Return the username to use when connecting to the postgres instance."""
     with open("tests/secrets/postgres-username") as file:
         postgres_username = file.read().strip()
 
