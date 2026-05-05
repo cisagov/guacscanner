@@ -40,7 +40,7 @@ def postgres_db_name():
 @pytest.fixture(scope="session")
 def postgres_username():
     """Return string containing the username to use when connecting to the postgres instance running in the composition."""
-    with open("src/secrets/postgres-username") as file:
+    with open("tests/secrets/postgres-username") as file:
         postgres_username = file.read().strip()
 
     return postgres_username
