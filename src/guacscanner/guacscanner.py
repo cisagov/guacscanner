@@ -54,9 +54,8 @@ Options:
     read from a local file.
   --rdp-username-file=FILENAME  The file from which the RDP username
     will be read. [default: /run/secrets/rdp-username]
-  --region=REGION  The AWS region in which the VPC specified by
-    --vpc-id exists.  Unused if --vpc-id is not specified. [default:
-    us-east-1]
+  --region=REGION  The AWS region in which the VPC specified by --vpc-id
+    exists.  Unused if --vpc-id is not specified. [default: us-east-1]
   --sleep=SECONDS  Sleep for the specified number of seconds between
     executions of the Guacamole connection update loop. [default: 60]
   --vnc-password=PASSWORD  If specified then the specified value will
