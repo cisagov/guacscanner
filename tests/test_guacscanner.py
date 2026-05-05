@@ -29,8 +29,6 @@ else:
 RELEASE_TAG = os.getenv("RELEASE_TAG")
 PROJECT_VERSION = guacscanner.__version__
 
-DUMMY_VPC_ID = "vpc-0123456789abcdef0"
-
 
 class TestVersion:
     """Tests related to project version."""
@@ -71,6 +69,7 @@ class TestVersion:
         ), "RELEASE_TAG does not match the project version"
 
 
+@mock_aws
 class TestLogLevels:
     """Tests related to setting the log level."""
 
@@ -78,6 +77,11 @@ class TestLogLevels:
     @pytest.mark.usefixtures("dockerc")
     def test_log_levels(self, level, monkeypatch):
         """Validate commandline log-level arguments."""
+        # Create a dummy VPC
+        ec2 = boto3.client("ec2", "us-east-1")
+        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+        vpc_id = vpc["Vpc"]["VpcId"]
+
         monkeypatch.setattr(
             sys,
             "argv",
@@ -92,7 +96,7 @@ class TestLogLevels:
                 "--rdp-username=dummy_rdp_username",
                 "--vnc-password=dummy_vnc_password",
                 "--vnc-username=dummy_vnc_username",
-                f"--vpc-id={DUMMY_VPC_ID}",
+                f"--vpc-id={vpc_id}",
                 "--windows-sftp-base=/C:/Users/dummy_user",
             ],
         )
