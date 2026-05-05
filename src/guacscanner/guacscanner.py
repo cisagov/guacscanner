@@ -86,6 +86,18 @@ DEFAULT_AMI_SKIP_REGEXES = [
     re.compile(r"^samba-.*$"),
 ]
 
+LOG_LEVELS: list[str] = []
+if sys.version_info >= (3, 11):
+    LOG_LEVELS = [*logging.getLevelNamesMapping()]
+else:
+    # The logging.getLevelNamesMapping method was only introduced in
+    # Python 3.11.
+    LOG_LEVELS = [
+        logging.getLevelName(x)
+        for x in range(0, 101)
+        if not logging.getLevelName(x).startswith("Level")
+    ]
+
 # A precompiled regex
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 
@@ -741,9 +753,10 @@ def main() -> None:
             "--log-level": schema.And(
                 str,
                 schema.Use(str.lower),
-                lambda n: n in ("debug", "info", "warning", "error", "critical"),
+                lambda n: n in (level.lower() for level in LOG_LEVELS),
                 error="Possible values for --log-level are "
-                + "debug, info, warning, error, and critical.",
+                + ", ".join([level.lower() for level in LOG_LEVELS])
+                + ".",
             ),
             "--sleep": schema.And(
                 schema.Use(float),
