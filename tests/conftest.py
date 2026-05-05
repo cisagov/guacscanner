@@ -5,12 +5,13 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 
 # Third-Party Libraries
 import pytest
-from python_on_whales import docker
+from python_on_whales import DockerClient
 
 
 @pytest.fixture(scope="session")
 def dockerc():
     """Start up the Docker composition."""
+    docker = DockerClient(compose_files=["tests/compose.yml"])
     docker.compose.up(detach=True, wait=True, wait_timeout=60)
     yield docker
     # Since this Docker composition includes data volumes, we want to

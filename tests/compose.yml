@@ -7,9 +7,9 @@ name: guacscanner-test
 
 secrets:
   postgres_password:
-    file: ./tests/secrets/postgres-password
+    file: ./secrets/postgres-password
   postgres_username:
-    file: ./tests/secrets/postgres-username
+    file: ./secrets/postgres-username
 
 volumes:
   dbdata:
