@@ -1,4 +1,4 @@
-"""Query AWS for new (destroyed) instances and add (remove) Guacamole connections for them.
+"""Query AWS for instances and add/remove Guacamole connections for them.
 
 Also check for instances that have been destroyed and remove their
 corresponding connections.
@@ -8,37 +8,75 @@ EXIT STATUS
   >0  An error occurred.
 
 Usage:
-  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS] [--postgres-password=PASSWORD|--postgres-password-file=FILENAME] [--postgres-username=USERNAME|--postgres-username-file=FILENAME] [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME] [--rdp-password=PASSWORD|--rdp-password-file=FILENAME] [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--region=REGION] [--vnc-password=PASSWORD|--vnc-password-file=FILENAME] [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID] [--windows-sftp-base=SFTPBASE|--windows-sftp-base-file=FILENAME]
+  guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS]
+  [--postgres-password=PASSWORD|--postgres-password-file=FILENAME]
+  [--postgres-username=USERNAME|--postgres-username-file=FILENAME]
+  [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME]
+  [--rdp-password=PASSWORD|--rdp-password-file=FILENAME]
+  [--rdp-username=USERNAME|--rdp-username-file=FILENAME] [--region=REGION]
+  [--vnc-password=PASSWORD|--vnc-password-file=FILENAME]
+  [--vnc-username=USERNAME|--vnc-username-file=FILENAME] [--vpc-id=VPC_ID]
+  [--windows-sftp-base=SFTPBASE|--windows-sftp-base-file=FILENAME]
   guacscanner (-h | --help)
 
 Options:
   -h --help              Show this message.
-  --log-level=LEVEL      If specified, then the log level will be set to
-                         the specified value.  Valid values are "debug", "info",
-                         "warning", "error", and "critical". [default: info]
-  --oneshot              If present then the loop that adds (removes) connections for new (terminated) instances will only be run once.
-  --postgres-password=PASSWORD    If specified then the specified value will be used as the password when connecting to the PostgreSQL database.  Otherwise, the password will be read from a local file.
-  --postgres-password-file=FILENAME    The file from which the PostgreSQL password will be read. [default: /run/secrets/postgres-password]
-  --postgres-username=USERNAME    If specified then the specified value will be used when connecting to the PostgreSQL database.  Otherwise, the username will be read from a local file.
-  --postgres-username-file=FILENAME    The file from which the PostgreSQL username will be read. [default: /run/secrets/postgres-username]
-  --private-ssh-key=KEY  If specified then the specified value will be used for the private SSH key.  Otherwise, the SSH key will be read from a local file.
-  --private-ssh-key-file=FILENAME  The file from which the private SSH key will be read. [default: /run/secrets/private-ssh-key]
-  --rdp-password=PASSWORD  If specified then the specified value will be used for the RDP password.  Otherwise, the password will be read from a local file.
-  --rdp-password-file=FILENAME  The file from which the RDP password will be read. [default: /run/secrets/rdp-password]
-  --rdp-username=USERNAME  If specified then the specified value will be used for the RDP username.  Otherwise, the username will be read from a local file.
-  --rdp-username-file=FILENAME  The file from which the RDP username will be read. [default: /run/secrets/rdp-username]
-  --region=REGION  The AWS region in which the VPC specified by --vpc-id exists.  Unused if --vpc-id is not specified. [default: us-east-1]
-  --sleep=SECONDS  Sleep for the specified number of seconds between executions of the Guacamole connection update loop. [default: 60]
-  --vnc-password=PASSWORD  If specified then the specified value will be used for the VNC password.  Otherwise, the password will be read from a local file.
-  --vnc-password-file=FILENAME  The file from which the VNC password will be read. [default: /run/secrets/vnc-password]
-  --vnc-username=USERNAME  If specified then the specified value will be used for the VNC username.  Otherwise, the username will be read from a local file.
-  --vnc-username-file=FILENAME  The file from which the VNC username will be read. [default: /run/secrets/vnc-username]
-  --vpc-id=VPC_ID        If specified then query for EC2 instances created
-                         or destroyed in the specified VPC ID.  If not
-                         specified then the ID of the VPC in which the host
-                         resides will be used.
-  --windows-sftp-base=SFTPBASE  If specified then the specified value will be used as the base path for configuring Windows SFTP connections.  Otherwise, the path will be read from a local file.
-  --windows-sftp-base-file=FILENAME  The file from which the base path for Windows SFTP connections will be read. [default: /run/secrets/windows-sftp-base]
+  --log-level=LEVEL    If specified, then the log level will be set to
+    the specified value.  Valid values are "debug", "info", "warning",
+    "error", and "critical". [default: info]
+  --oneshot    If present then the loop that adds (removes)
+    connections for new (terminated) instances will only be run once.
+  --postgres-password=PASSWORD    If specified then the specified
+    value will be used as the password when connecting to the
+    PostgreSQL database.  Otherwise, the password will be read from a
+    local file.
+  --postgres-password-file=FILENAME    The file from which the
+    PostgreSQL password will be read. [default:
+    /run/secrets/postgres-password]
+  --postgres-username=USERNAME    If specified then the specified
+    value will be used when connecting to the PostgreSQL database.
+    Otherwise, the username will be read from a local file.
+  --postgres-username-file=FILENAME    The file from which the
+    PostgreSQL username will be read. [default:
+    /run/secrets/postgres-username]
+  --private-ssh-key=KEY  If specified then the specified value will be
+    used for the private SSH key.  Otherwise, the SSH key will be read
+    from a local file.
+  --private-ssh-key-file=FILENAME  The file from which the private SSH
+    key will be read. [default: /run/secrets/private-ssh-key]
+  --rdp-password=PASSWORD  If specified then the specified value will
+    be used for the RDP password.  Otherwise, the password will be
+    read from a local file.
+  --rdp-password-file=FILENAME  The file from which the RDP password
+    will be read. [default: /run/secrets/rdp-password]
+  --rdp-username=USERNAME  If specified then the specified value will
+    be used for the RDP username.  Otherwise, the username will be
+    read from a local file.
+  --rdp-username-file=FILENAME  The file from which the RDP username
+    will be read. [default: /run/secrets/rdp-username]
+  --region=REGION  The AWS region in which the VPC specified by --vpc-id
+    exists.  Unused if --vpc-id is not specified. [default: us-east-1]
+  --sleep=SECONDS  Sleep for the specified number of seconds between
+    executions of the Guacamole connection update loop. [default: 60]
+  --vnc-password=PASSWORD  If specified then the specified value will
+    be used for the VNC password.  Otherwise, the password will be
+    read from a local file.
+  --vnc-password-file=FILENAME  The file from which the VNC password
+    will be read. [default: /run/secrets/vnc-password]
+  --vnc-username=USERNAME  If specified then the specified value will
+    be used for the VNC username.  Otherwise, the username will be
+    read from a local file.
+  --vnc-username-file=FILENAME  The file from which the VNC username
+    will be read. [default: /run/secrets/vnc-username]
+  --vpc-id=VPC_ID    If specified then query for EC2 instances created
+    or destroyed in the specified VPC ID.  If not specified then the
+    ID of the VPC in which the host resides will be used.
+  --windows-sftp-base=SFTPBASE   If specified then the specified value
+    will be used as the base path for configuring Windows SFTP
+    connections.  Otherwise, the path will be read from a local file.
+  --windows-sftp-base-file=FILENAME    The file from which the base
+    path for Windows SFTP connections will be read. [default:
+    /run/secrets/windows-sftp-base]
 """
 
 # Standard Python Libraries
@@ -97,7 +135,8 @@ VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
 # The PostgreSQL queries used for adding, removing, and updating
 # connections
 COUNT_QUERY = psycopg.sql.SQL(
-    "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s AND {value_field} = %s"
+    """SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s
+    AND {value_field} = %s"""
 ).format(
     id_field=psycopg.sql.Identifier("connection_id"),
     table=psycopg.sql.Identifier("guacamole_connection_attribute"),
@@ -120,13 +159,11 @@ ALL_IDS_QUERY = psycopg.sql.SQL(
     name_field=psycopg.sql.Identifier("attribute_name"),
     value_field=psycopg.sql.Identifier("attribute_value"),
 )
-INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_CONNECTION_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {name_field}, {protocol_field}, {max_connections_field},
     {max_connections_per_user_field}, {proxy_port_field}, {proxy_hostname_field},
     {proxy_encryption_method_field})
-    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {id_field};"""
-).format(
+    VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {id_field};""").format(
     table=psycopg.sql.Identifier("guacamole_connection"),
     name_field=psycopg.sql.Identifier("connection_name"),
     protocol_field=psycopg.sql.Identifier("protocol"),
@@ -137,31 +174,25 @@ INSERT_CONNECTION_QUERY = psycopg.sql.SQL(
     proxy_encryption_method_field=psycopg.sql.Identifier("proxy_encryption_method"),
     id_field=psycopg.sql.Identifier("connection_id"),
 )
-UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL(
-    """UPDATE {table}
+UPDATE_CONNECTION_NAME_QUERY = psycopg.sql.SQL("""UPDATE {table}
     SET {name_field} = %s
     WHERE {id_field} = %s
-    AND {name_field} IS DISTINCT FROM %s;"""
-).format(
+    AND {name_field} IS DISTINCT FROM %s;""").format(
     table=psycopg.sql.Identifier("guacamole_connection"),
     name_field=psycopg.sql.Identifier("connection_name"),
     id_field=psycopg.sql.Identifier("connection_id"),
 )
-INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table}
+INSERT_CONNECTION_PARAMETER_QUERY = psycopg.sql.SQL("""INSERT INTO {table}
     ({id_field}, {parameter_name_field}, {parameter_value_field})
-    VALUES (%s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_connection_parameter"),
     id_field=psycopg.sql.Identifier("connection_id"),
     parameter_name_field=psycopg.sql.Identifier("parameter_name"),
     parameter_value_field=psycopg.sql.Identifier("parameter_value"),
 )
-INSERT_CONNECTION_ATTRIBUTE_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table}
+INSERT_CONNECTION_ATTRIBUTE_QUERY = psycopg.sql.SQL("""INSERT INTO {table}
     ({id_field}, {attribute_name_field}, {attribute_value_field})
-    VALUES (%s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_connection_attribute"),
     id_field=psycopg.sql.Identifier("connection_id"),
     attribute_name_field=psycopg.sql.Identifier("attribute_name"),
@@ -188,7 +219,8 @@ DELETE_CONNECTION_ATTRIBUTES_QUERY = psycopg.sql.SQL(
 
 # The PostgreSQL queries used for adding and removing users
 ENTITY_COUNT_QUERY = psycopg.sql.SQL(
-    "SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s AND {type_field} = %s"
+    """SELECT COUNT({id_field}) FROM {table} WHERE {name_field} = %s
+    AND {type_field} = %s"""
 ).format(
     id_field=psycopg.sql.Identifier("entity_id"),
     table=psycopg.sql.Identifier("guacamole_entity"),
@@ -203,21 +235,17 @@ ENTITY_ID_QUERY = psycopg.sql.SQL(
     name_field=psycopg.sql.Identifier("name"),
     type_field=psycopg.sql.Identifier("type"),
 )
-INSERT_ENTITY_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_ENTITY_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {name_field}, {type_field})
-    VALUES (%s, %s) RETURNING {id_field};"""
-).format(
+    VALUES (%s, %s) RETURNING {id_field};""").format(
     table=psycopg.sql.Identifier("guacamole_entity"),
     name_field=psycopg.sql.Identifier("name"),
     type_field=psycopg.sql.Identifier("type"),
     id_field=psycopg.sql.Identifier("entity_id"),
 )
-INSERT_USER_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_USER_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {id_field}, {hash_field}, {salt_field}, {date_field})
-    VALUES (%s, %s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_user"),
     id_field=psycopg.sql.Identifier("entity_id"),
     hash_field=psycopg.sql.Identifier("password_hash"),
@@ -226,11 +254,9 @@ INSERT_USER_QUERY = psycopg.sql.SQL(
 )
 # The PostgreSQL queries used to add and remove connection
 # permissions
-INSERT_CONNECTION_PERMISSION_QUERY = psycopg.sql.SQL(
-    """INSERT INTO {table} (
+INSERT_CONNECTION_PERMISSION_QUERY = psycopg.sql.SQL("""INSERT INTO {table} (
     {entity_id_field}, {connection_id_field}, {permission_field})
-    VALUES (%s, %s, %s);"""
-).format(
+    VALUES (%s, %s, %s);""").format(
     table=psycopg.sql.Identifier("guacamole_connection_permission"),
     entity_id_field=psycopg.sql.Identifier("entity_id"),
     connection_id_field=psycopg.sql.Identifier("connection_id"),
@@ -245,7 +271,7 @@ DELETE_CONNECTION_PERMISSIONS_QUERY = psycopg.sql.SQL(
 
 
 def entity_exists(db_connection, entity_name, entity_type):
-    """Return a boolean indicating whether an entity with the specified name and type exists."""
+    """Return whether an entity with the specified name and type exists."""
     with db_connection.cursor() as cursor:
         logging.debug(
             "Checking to see if an entity named %s of type %s exists in the database.",
@@ -356,10 +382,11 @@ def add_user(
 
 
 def instance_connection_exists(db_connection, instance_id):
-    """Return a boolean indicating whether a connection for the specified instance exists."""
+    """Return whether a connection for the specified instance exists."""
     with db_connection.cursor() as cursor:
         logging.debug(
-            "Checking to see if a connection for the instance ID %s exists in the database.",
+            "Checking to see if a connection for the instance ID %s exists "
+            "in the database.",
             instance_id,
         )
         cursor.execute(
@@ -714,7 +741,7 @@ def process_instance(
 
 
 def check_for_ghost_instances(db_connection, instances):
-    """Check to see if any connections belonging to nonexistent instances are in the database."""
+    """Remove any connections belonging to nonexistent instances."""
     instance_ids = [instance.id for instance in instances]
     with db_connection.cursor() as cursor:
         cursor.execute(ALL_IDS_QUERY, ("instance_id",))
@@ -723,7 +750,8 @@ def check_for_ghost_instances(db_connection, instances):
             instance_id = record["attribute_value"]
             if instance_id not in instance_ids:
                 logging.info(
-                    "Connection for %s being removed since that instance no longer exists.",
+                    "Connection for %s being removed since that instance "
+                    "no longer exists.",
                     instance_id,
                 )
                 remove_connection(db_connection, connection_id)
@@ -743,7 +771,7 @@ def main() -> None:
                 schema.Use(str.lower),
                 lambda n: n in ("debug", "info", "warning", "error", "critical"),
                 error="Possible values for --log-level are "
-                + "debug, info, warning, error, and critical.",
+                "debug, info, warning, error, and critical.",
             ),
             "--sleep": schema.And(
                 schema.Use(float),
@@ -755,7 +783,8 @@ def main() -> None:
                     str,
                     schema.Use(str.lower),
                     lambda x: VPC_ID_REGEX.match(x) is not None,
-                    error="Possible values for --vpc-id are the characters vpc- followed by either 8 or 17 hexadecimal digits.",
+                    error="Possible values for --vpc-id are the characters "
+                    "vpc- followed by either 8 or 17 hexadecimal digits.",
                 ),
             ),
             str: object,  # Don't care about other keys, if any
@@ -823,7 +852,11 @@ def main() -> None:
         with open(validated_args["--windows-sftp-base-file"]) as file:
             windows_sftp_base = file.read()
 
-    db_connection_string = f"user={postgres_username} password={postgres_password} host={postgres_hostname} port={postgres_port} dbname={postgres_db_name}"
+    db_connection_string = (
+        f"user={postgres_username} password={postgres_password} "
+        f"host={postgres_hostname} port={postgres_port} "
+        f"dbname={postgres_db_name}"
+    )
 
     vpc_id = validated_args["--vpc-id"]
     # TODO: Verify that the region specified is indeed a valid AWS
@@ -897,7 +930,8 @@ def main() -> None:
                 # In any event, this continue statement should keep
                 # things moving when it does.
                 logging.exception(
-                    "Unable to determine if instance is running an AMI that would cause it to be skipped."
+                    "Unable to determine if instance is running an AMI that "
+                    "would cause it to be skipped."
                 )
                 continue
             if any(ami_matches):
@@ -920,13 +954,15 @@ def main() -> None:
             )
 
         logging.info(
-            "Checking to see if any connections belonging to nonexistent instances are in the database."
+            "Checking to see if any connections belonging to nonexistent "
+            "instances are in the database."
         )
         check_for_ghost_instances(db_connection, instances)
 
         if oneshot:
             logging.debug(
-                "Stopping Guacamole connection update loop because --oneshot is present."
+                "Stopping Guacamole connection update loop because --oneshot "
+                "is present."
             )
             keep_looping = False
 
