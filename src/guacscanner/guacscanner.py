@@ -843,9 +843,6 @@ def main() -> None:
     else:
         ec2 = boto3.resource("ec2", region_name=region)
 
-    logging.info("Examining instances in VPC %s.", vpc_id)
-
-    instances = ec2.Vpc(vpc_id).instances.all()
     keep_looping = True
     guacuser_id = None
     while keep_looping:
@@ -877,6 +874,8 @@ def main() -> None:
             else:
                 guacuser_id = get_entity_id(db_connection, "guacuser", "USER")
 
+        logging.info("Examining instances in VPC %s.", vpc_id)
+        instances = ec2.Vpc(vpc_id).instances.all()
         for instance in instances:
             ami = ec2.Image(instance.image_id)
             # Early exit if this instance is running an AMI that we
