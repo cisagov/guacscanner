@@ -187,9 +187,55 @@ class TestGuacuser:
         self, monkeypatch, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected when it already exists."""
-        self.test_addition_of_guacuser(
-            monkeypatch, postgres_container, postgres_db_name, postgres_username
+        # Create a VPC
+        ec2 = boto3.client("ec2", "us-east-1")
+        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
+        vpc_id = vpc["Vpc"]["VpcId"]
+
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
         )
+
+        # First run creates guacuser.
+        guacscanner.guacscanner.main()
+        # Second run exercises the already-exists/idempotency path.
+        guacscanner.guacscanner.main()
+
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT name FROM guacamole_entity;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "guacadmin" in response
+        assert "guacuser" in response
+
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT COUNT(*) FROM guacamole_user;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "(1 row)" in response
 
 
 @mock_aws
