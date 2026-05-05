@@ -214,10 +214,17 @@ jobs:
         # We test on all of the latest platforms available to use with GitHub-
         # hosted runners for public repositories.
         platform:
-          - macos-latest
+          # TODO: #274 - There are currently various issues with
+          # running Docker on the GitHub-hosted Mac runners:
+          # https://github.com/marketplace/actions/setup-docker-on-macos
+          # - macos-latest
           - ubuntu-24.04-arm
           - ubuntu-latest
-          - windows-latest
+          # TODO: #273 - The official Guacamole images currently only
+          # support x86_64 and ARM64 on Linux:
+          # https://hub.docker.com/r/guacamole/guacamole/tags
+          # Therefore we cannot currently run the tests on Windows.
+          # - windows-latest
         python-version:
           - "3.10"
           - "3.11"
@@ -438,10 +445,17 @@ jobs:
         # We test on all of the latest platforms available to use with GitHub-
         # hosted runners for public repositories.
         platform:
-          - macos-latest
+          # TODO: #274 - There are currently various issues with
+          # running Docker on the GitHub-hosted Mac runners:
+          # https://github.com/marketplace/actions/setup-docker-on-macos
+          # - macos-latest
           - ubuntu-24.04-arm
           - ubuntu-latest
-          - windows-latest
+          # TODO: #273 - The official Guacamole images currently only
+          # support x86_64 and ARM64 on Linux:
+          # https://hub.docker.com/r/guacamole/guacamole/tags
+          # Therefore we cannot currently run the tests on Windows.
+          # - windows-latest
         python-version:
           - "3.10"
           - "3.11"
