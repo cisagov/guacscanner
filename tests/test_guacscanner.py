@@ -307,6 +307,7 @@ class TestLinuxInstance:
                 f"--username={postgres_username}",
             ]
         )
+        assert "(1 row)" in response
         assert "Linux" in response
         assert instance_id in response
 
@@ -324,6 +325,7 @@ class TestLinuxInstance:
                 f"--username={postgres_username}",
             ]
         )
+        assert "(1 row)" in response
         assert "Linux" in response
         assert instance_id in response
 
@@ -341,6 +343,7 @@ class TestLinuxInstance:
                 f"--username={postgres_username}",
             ]
         )
+        assert "(1 row)" in response
         assert "Linux" in response
         assert instance_id in response
 
@@ -432,6 +435,7 @@ class TestWindowsInstance:
                 f"--username={postgres_username}",
             ]
         )
+        assert "(1 row)" in response
         assert "Windows" in response
         assert instance_id in response
 
@@ -449,6 +453,7 @@ class TestWindowsInstance:
                 f"--username={postgres_username}",
             ]
         )
+        assert "(1 row)" in response
         assert "Windows" in response
         assert instance_id in response
 
@@ -466,6 +471,7 @@ class TestWindowsInstance:
                 f"--username={postgres_username}",
             ]
         )
+        assert "(1 row)" in response
         assert "Windows" in response
         assert instance_id in response
 
