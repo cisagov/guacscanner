@@ -27,7 +27,7 @@ def dockerc():
 def postgres_container(dockerc):
     """Return the postgres container from the Docker composition."""
     dockerc.compose.up(detach=True, services=["postgres"], wait=True, wait_timeout=60)
-    # find the container by name even if it is stopped already
+    # Find the container by name even if it is stopped already
     yield dockerc.compose.ps(services=["postgres"], all=True)[0]
     dockerc.compose.down(services=["postgres"], volumes=True)
 
