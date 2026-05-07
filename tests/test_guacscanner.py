@@ -7,7 +7,6 @@ import sys
 
 # Third-Party Libraries
 import boto3
-from moto import mock_aws
 import pytest
 
 # cisagov Libraries
@@ -69,12 +68,11 @@ class TestVersion:
         ), "RELEASE_TAG does not match the project version"
 
 
-@mock_aws
 class TestLogLevels:
     """Tests related to setting the log level."""
 
     @pytest.mark.parametrize("level", LOG_LEVELS)
-    @pytest.mark.usefixtures("dockerc")
+    @pytest.mark.usefixtures("moto", "postgres_container")
     def test_log_levels(self, level, monkeypatch):
         """Validate commandline log-level arguments."""
         # Create a dummy VPC
@@ -129,7 +127,7 @@ class TestLogLevels:
         assert return_code == 1, "main() should exit with error"
 
 
-@mock_aws
+@pytest.mark.usefixtures("moto")
 class TestGuacuser:
     """Tests related to the addition of the guacuser."""
 
@@ -160,6 +158,7 @@ class TestGuacuser:
                 "--windows-sftp-base=/C:/Users/dummy_user",
             ],
         )
+        # First run creates guacuser.
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -211,8 +210,6 @@ class TestGuacuser:
             ],
         )
 
-        # First run creates guacuser.
-        guacscanner.guacscanner.main()
         # Second run exercises the already-exists/idempotency path.
         guacscanner.guacscanner.main()
 
@@ -238,14 +235,14 @@ class TestGuacuser:
         assert "(1 row)" in response
 
 
-@mock_aws
+@pytest.mark.usefixtures("moto")
 class TestLinuxInstance:
     """Tests related to Linux instances."""
 
-    def test_instance_lifecycle(
+    def test_instance_creation(
         self, monkeypatch, postgres_container, postgres_db_name, postgres_username
     ):
-        """Verify that adding then terminating an instance works as expected."""
+        """Verify that adding an instance works as expected."""
         # Create and populate a VPC with an EC2 instance
         #
         # TODO: Create a test fixture to reduce duplication of this EC2
@@ -311,10 +308,35 @@ class TestLinuxInstance:
         assert "Linux" in response
         assert instance_id in response
 
+    def test_instance_stop(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that stopping an instance works as expected."""
         # Stop the existing EC2 instance
         ec2 = boto3.client("ec2", "us-east-1")
+        response = ec2.describe_instances()
+        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
+        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
         ec2.stop_instances(InstanceIds=[instance_id])
 
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -329,10 +351,35 @@ class TestLinuxInstance:
         assert "Linux" in response
         assert instance_id in response
 
+    def test_instance_restart(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that restarting an instance works as expected."""
         # Restart the existing EC2 instance
         ec2 = boto3.client("ec2", "us-east-1")
+        response = ec2.describe_instances()
+        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
+        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
         ec2.start_instances(InstanceIds=[instance_id])
 
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -347,10 +394,35 @@ class TestLinuxInstance:
         assert "Linux" in response
         assert instance_id in response
 
+    def test_instance_terminate(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that terminating an instance works as expected."""
         # Terminate the existing EC2 instance
         ec2 = boto3.client("ec2", "us-east-1")
+        response = ec2.describe_instances()
+        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
+        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
         ec2.terminate_instances(InstanceIds=[instance_id])
 
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -364,14 +436,14 @@ class TestLinuxInstance:
         assert "(0 rows)" in response
 
 
-@mock_aws
+@pytest.mark.usefixtures("moto")
 class TestWindowsInstance:
     """Tests related to Windows instances."""
 
-    def test_instance_lifecycle(
+    def test_instance_creation(
         self, monkeypatch, postgres_container, postgres_db_name, postgres_username
     ):
-        """Verify that adding then terminating an instance works as expected."""
+        """Verify that creating an instance works as expected."""
         # Create and populate a VPC with an EC2 instance
         #
         # TODO: Create a test fixture to reduce duplication of this EC2
@@ -439,10 +511,35 @@ class TestWindowsInstance:
         assert "Windows" in response
         assert instance_id in response
 
+    def test_instance_stop(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that stopping an instance works as expected."""
         # Stop the existing EC2 instance
         ec2 = boto3.client("ec2", "us-east-1")
+        response = ec2.describe_instances()
+        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
+        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
         ec2.stop_instances(InstanceIds=[instance_id])
 
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -457,10 +554,35 @@ class TestWindowsInstance:
         assert "Windows" in response
         assert instance_id in response
 
+    def test_instance_restart(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that restarting an instance works as expected."""
         # Restart the existing EC2 instance
         ec2 = boto3.client("ec2", "us-east-1")
+        response = ec2.describe_instances()
+        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
+        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
         ec2.start_instances(InstanceIds=[instance_id])
 
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -475,10 +597,35 @@ class TestWindowsInstance:
         assert "Windows" in response
         assert instance_id in response
 
+    def test_instance_terminate(
+        self, monkeypatch, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that terminating an instance works as expected."""
         # Terminate the existing EC2 instance
         ec2 = boto3.client("ec2", "us-east-1")
+        response = ec2.describe_instances()
+        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
+        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
         ec2.terminate_instances(InstanceIds=[instance_id])
 
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "--log-level=debug",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(

@@ -7,6 +7,7 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 import os
 
 # Third-Party Libraries
+from moto import mock_aws
 import pytest
 from python_on_whales import DockerClient
 
@@ -26,6 +27,19 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
+@pytest.fixture(scope="class")
+def moto(aws_credentials):
+    """Manually create a moto mock.
+
+    Doing this instead of using the @mock_aws decorator allows us to
+    control the scope.
+    """
+    mock = mock_aws()
+    mock.start()
+    yield mock
+    mock.stop()
+
+
 @pytest.fixture(scope="session")
 def dockerc():
     """Start up the Docker composition."""
@@ -38,10 +52,9 @@ def dockerc():
     docker.compose.down(volumes=True)
 
 
-# Using a scope of function here makes the PostgreSQL container have the
-# same scope as the Moto mock AWS library.  The latter resets itself
-# after every test function.
-@pytest.fixture(scope="function")
+# Using a scope of class here makes the PostgreSQL container have the
+# same scope as the moto fixture.
+@pytest.fixture(scope="class")
 def postgres_container(dockerc):
     """Return the postgres container from the Docker composition."""
     dockerc.compose.up(detach=True, services=["postgres"], wait=True, wait_timeout=60)
