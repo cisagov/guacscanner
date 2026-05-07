@@ -140,6 +140,18 @@ class TestGuacuser:
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
 
+        # Verify that guacuser does not yet exist
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT name FROM guacamole_entity;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "guacadmin" in response
+        assert "guacuser" not in response
+
         monkeypatch.setattr(
             sys,
             "argv",
@@ -190,6 +202,18 @@ class TestGuacuser:
         ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
+
+        # Verify that guacuser already exists
+        response = postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT name FROM guacamole_entity;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+        assert "guacadmin" in response
+        assert "guacuser" in response
 
         monkeypatch.setattr(
             sys,
