@@ -5,6 +5,7 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 
 # Standard Python Libraries
 import os
+import sys
 
 # Third-Party Libraries
 from moto import mock_aws
@@ -38,6 +39,36 @@ def moto(aws_credentials):
     mock.start()
     yield mock
     mock.stop()
+
+
+# This is a "factory as fixture":
+# https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures
+@pytest.fixture
+def args(monkeypatch):
+    """Return a function that can be used to set sys.argv for guacscanner."""
+
+    def _args(vpc_id, log_level="debug"):
+        """Set sys.argv for guacscanner."""
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                f"--log-level={log_level}",
+                "--oneshot",
+                "--postgres-hostname=localhost",
+                "--postgres-password-file=tests/secrets/postgres-password",
+                "--postgres-username-file=tests/secrets/postgres-username",
+                "--private-ssh-key=dummy_key",
+                "--rdp-password=dummy_rdp_password",
+                "--rdp-username=dummy_rdp_username",
+                "--vnc-password=dummy_vnc_password",
+                "--vnc-username=dummy_vnc_username",
+                f"--vpc-id={vpc_id}",
+                "--windows-sftp-base=/C:/Users/dummy_user",
+            ],
+        )
+
+    return _args
 
 
 @pytest.fixture(scope="session")
