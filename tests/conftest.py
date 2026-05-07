@@ -5,6 +5,7 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 
 # Standard Python Libraries
 import os
+import random
 import sys
 
 # Third-Party Libraries
@@ -48,13 +49,104 @@ def ec2(moto):
     return boto3.client("ec2", "us-east-1")
 
 
+@pytest.fixture(scope="class")
+def vpc_cidr():
+    """Create a random /24 CIDR block inside of 10.0.0.0/8."""
+    # The following lines generate warnings from bandit (B311) and
+    # flake8 (DUO102) about "Standard pseudo-random generators are not
+    # suitable for security/cryptographic purposes." and "insecure use
+    # of "random" module, prefer "random.SystemRandom", respectively.
+    # We aren't using Random() for the purposes of cryptography here, so
+    # we can safely ignore these warnings.
+    return (
+        f"10.{random.randrange(1, 254)}."  # noqa: DUO102 # nosec B311
+        f"{random.randrange(1, 254)}.0/24"  # noqa: DUO102 # nosec B311
+    )
+
+
+@pytest.fixture(scope="class")
+def vpc_id(ec2, vpc_cidr):
+    """Create a VPC and return the VPC ID."""
+    vpc = ec2.create_vpc(CidrBlock=vpc_cidr)
+    return vpc["Vpc"]["VpcId"]
+
+
+@pytest.fixture(scope="class")
+def subnet_id(ec2, vpc_cidr, vpc_id):
+    """Create a single subnet that takes up the entire VPC and return the subnet ID."""
+    subnet = ec2.create_subnet(CidrBlock=vpc_cidr, VpcId=vpc_id)
+    return subnet["Subnet"]["SubnetId"]
+
+
+@pytest.fixture(scope="class")
+def linux_instance_id(ec2, subnet_id):
+    """Create a Linux instance."""
+    amis = ec2.describe_images(
+        Filters=[
+            {
+                "Name": "Name",
+                "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"],
+            }
+        ]
+    )
+    ami = amis["Images"][0]
+    ami_id = ami["ImageId"]
+
+    response = ec2.run_instances(
+        ImageId=ami_id,
+        SubnetId=subnet_id,
+        MaxCount=1,
+        MinCount=1,
+        TagSpecifications=[
+            {
+                "ResourceType": "instance",
+                "Tags": [{"Key": "Name", "Value": "Linux"}],
+            }
+        ],
+    )
+
+    return response["Instances"][0]["InstanceId"]
+
+
+@pytest.fixture(scope="class")
+def windows_instance_id(ec2, subnet_id):
+    """Create a Windows instance."""
+    amis = ec2.describe_images(
+        Filters=[
+            {
+                "Name": "Name",
+                "Values": [
+                    "Windows_Server-2016-English-Full-SQL_2017_Enterprise-2017.10.13",
+                ],
+            }
+        ]
+    )
+    ami = amis["Images"][0]
+    ami_id = ami["ImageId"]
+
+    response = ec2.run_instances(
+        ImageId=ami_id,
+        SubnetId=subnet_id,
+        MaxCount=1,
+        MinCount=1,
+        TagSpecifications=[
+            {
+                "ResourceType": "instance",
+                "Tags": [{"Key": "Name", "Value": "Windows"}],
+            }
+        ],
+    )
+
+    return response["Instances"][0]["InstanceId"]
+
+
 # This is a "factory as fixture":
 # https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures
 @pytest.fixture
-def args(monkeypatch):
+def args(monkeypatch, vpc_id):
     """Return a function that can be used to set sys.argv for guacscanner."""
 
-    def _args(vpc_id, log_level="debug"):
+    def _args(log_level="debug"):
         """Set sys.argv for guacscanner."""
         monkeypatch.setattr(
             sys,

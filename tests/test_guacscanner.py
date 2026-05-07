@@ -72,13 +72,9 @@ class TestLogLevels:
 
     @pytest.mark.parametrize("level", LOG_LEVELS)
     @pytest.mark.usefixtures("moto", "postgres_container")
-    def test_log_levels(self, args, ec2, level, monkeypatch):
+    def test_log_levels(self, args, level, monkeypatch):
         """Validate commandline log-level arguments."""
-        # Create a dummy VPC
-        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-        vpc_id = vpc["Vpc"]["VpcId"]
-
-        args(vpc_id, level)
+        args(level)
         monkeypatch.setattr(logging.root, "handlers", [])
         assert (
             logging.root.hasHandlers() is False
@@ -113,13 +109,9 @@ class TestGuacuser:
     """Tests related to the addition of the guacuser."""
 
     def test_addition_of_guacuser(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self, args, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected."""
-        # Create a VPC
-        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-        vpc_id = vpc["Vpc"]["VpcId"]
-
         # Verify that guacuser does not yet exist
         response = postgres_container.execute(
             command=[
@@ -132,7 +124,7 @@ class TestGuacuser:
         assert "guacadmin" in response
         assert "guacuser" not in response
 
-        args(vpc_id)
+        args()
         # First run creates guacuser.
         guacscanner.guacscanner.main()
 
@@ -158,13 +150,9 @@ class TestGuacuser:
         assert "(1 row)" in response
 
     def test_addition_of_guacuser_already_exists(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self, args, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected when it already exists."""
-        # Create a VPC
-        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-        vpc_id = vpc["Vpc"]["VpcId"]
-
         # Verify that guacuser already exists
         response = postgres_container.execute(
             command=[
@@ -177,7 +165,7 @@ class TestGuacuser:
         assert "guacadmin" in response
         assert "guacuser" in response
 
-        args(vpc_id)
+        args()
 
         # Second run exercises the already-exists/idempotency path.
         guacscanner.guacscanner.main()
@@ -209,42 +197,15 @@ class TestLinuxInstance:
     """Tests related to Linux instances."""
 
     def test_instance_creation(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        linux_instance_id,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
         """Verify that adding an instance works as expected."""
-        # Create and populate a VPC with an EC2 instance
-        #
-        # TODO: Create a test fixture to reduce duplication of this EC2
-        # setup code.  See cisagov/guacscanner#7 for more details.
-        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-        vpc_id = vpc["Vpc"]["VpcId"]
-        subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
-        subnet_id = subnet["Subnet"]["SubnetId"]
-        amis = ec2.describe_images(
-            Filters=[
-                {
-                    "Name": "Name",
-                    "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"],
-                }
-            ]
-        )
-        ami = amis["Images"][0]
-        ami_id = ami["ImageId"]
-        response = ec2.run_instances(
-            ImageId=ami_id,
-            SubnetId=subnet_id,
-            MaxCount=1,
-            MinCount=1,
-            TagSpecifications=[
-                {
-                    "ResourceType": "instance",
-                    "Tags": [{"Key": "Name", "Value": "Linux"}],
-                }
-            ],
-        )
-        instance_id = response["Instances"][0]["InstanceId"]
-
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -257,19 +218,22 @@ class TestLinuxInstance:
         )
         assert "(1 row)" in response
         assert "Linux" in response
-        assert instance_id in response
+        assert linux_instance_id in response
 
     def test_instance_stop(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        ec2,
+        linux_instance_id,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
         """Verify that stopping an instance works as expected."""
         # Stop the existing EC2 instance
-        response = ec2.describe_instances()
-        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
-        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
-        ec2.stop_instances(InstanceIds=[instance_id])
+        ec2.stop_instances(InstanceIds=[linux_instance_id])
 
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -282,19 +246,22 @@ class TestLinuxInstance:
         )
         assert "(1 row)" in response
         assert "Linux" in response
-        assert instance_id in response
+        assert linux_instance_id in response
 
     def test_instance_restart(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        ec2,
+        linux_instance_id,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
         """Verify that restarting an instance works as expected."""
         # Restart the existing EC2 instance
-        response = ec2.describe_instances()
-        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
-        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
-        ec2.start_instances(InstanceIds=[instance_id])
+        ec2.start_instances(InstanceIds=[linux_instance_id])
 
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -307,19 +274,22 @@ class TestLinuxInstance:
         )
         assert "(1 row)" in response
         assert "Linux" in response
-        assert instance_id in response
+        assert linux_instance_id in response
 
     def test_instance_terminate(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        ec2,
+        linux_instance_id,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
         """Verify that terminating an instance works as expected."""
         # Terminate the existing EC2 instance
-        response = ec2.describe_instances()
-        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
-        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
-        ec2.terminate_instances(InstanceIds=[instance_id])
+        ec2.terminate_instances(InstanceIds=[linux_instance_id])
 
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -338,44 +308,15 @@ class TestWindowsInstance:
     """Tests related to Windows instances."""
 
     def test_instance_creation(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
+        windows_instance_id,
     ):
         """Verify that creating an instance works as expected."""
-        # Create and populate a VPC with an EC2 instance
-        #
-        # TODO: Create a test fixture to reduce duplication of this EC2
-        # setup code.  See cisagov/guacscanner#7 for more details.
-        vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-        vpc_id = vpc["Vpc"]["VpcId"]
-        subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
-        subnet_id = subnet["Subnet"]["SubnetId"]
-        amis = ec2.describe_images(
-            Filters=[
-                {
-                    "Name": "Name",
-                    "Values": [
-                        "Windows_Server-2016-English-Full-SQL_2017_Enterprise-2017.10.13"
-                    ],
-                }
-            ]
-        )
-        ami = amis["Images"][0]
-        ami_id = ami["ImageId"]
-        response = ec2.run_instances(
-            ImageId=ami_id,
-            SubnetId=subnet_id,
-            MaxCount=1,
-            MinCount=1,
-            TagSpecifications=[
-                {
-                    "ResourceType": "instance",
-                    "Tags": [{"Key": "Name", "Value": "Windows"}],
-                }
-            ],
-        )
-        instance_id = response["Instances"][0]["InstanceId"]
-
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -388,19 +329,22 @@ class TestWindowsInstance:
         )
         assert "(1 row)" in response
         assert "Windows" in response
-        assert instance_id in response
+        assert windows_instance_id in response
 
     def test_instance_stop(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        ec2,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
+        windows_instance_id,
     ):
         """Verify that stopping an instance works as expected."""
         # Stop the existing EC2 instance
-        response = ec2.describe_instances()
-        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
-        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
-        ec2.stop_instances(InstanceIds=[instance_id])
+        ec2.stop_instances(InstanceIds=[windows_instance_id])
 
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -413,19 +357,22 @@ class TestWindowsInstance:
         )
         assert "(1 row)" in response
         assert "Windows" in response
-        assert instance_id in response
+        assert windows_instance_id in response
 
     def test_instance_restart(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        ec2,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
+        windows_instance_id,
     ):
         """Verify that restarting an instance works as expected."""
         # Restart the existing EC2 instance
-        response = ec2.describe_instances()
-        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
-        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
-        ec2.start_instances(InstanceIds=[instance_id])
+        ec2.start_instances(InstanceIds=[windows_instance_id])
 
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
@@ -438,19 +385,22 @@ class TestWindowsInstance:
         )
         assert "(1 row)" in response
         assert "Windows" in response
-        assert instance_id in response
+        assert windows_instance_id in response
 
     def test_instance_terminate(
-        self, args, ec2, postgres_container, postgres_db_name, postgres_username
+        self,
+        args,
+        ec2,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
+        windows_instance_id,
     ):
         """Verify that terminating an instance works as expected."""
         # Terminate the existing EC2 instance
-        response = ec2.describe_instances()
-        instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
-        vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
-        ec2.terminate_instances(InstanceIds=[instance_id])
+        ec2.terminate_instances(InstanceIds=[windows_instance_id])
 
-        args(vpc_id)
+        args()
         guacscanner.guacscanner.main()
 
         response = postgres_container.execute(
