@@ -3,9 +3,27 @@
 https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 """
 
+# Standard Python Libraries
+import os
+
 # Third-Party Libraries
 import pytest
 from python_on_whales import DockerClient
+
+
+@pytest.fixture(autouse=True, scope="session")
+def aws_credentials():
+    """Create dummy AWS credentials for moto.
+
+    Making this an autouse fixture guarantees that boto3 never sees
+    any real credentials that may exist locally.  This guarantees
+    that no real API calls are ever made to AWS.
+    """
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"  # nosec B105
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"  # nosec B105
+    os.environ["AWS_SESSION_TOKEN"] = "testing"  # nosec B105
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
 @pytest.fixture(scope="session")
