@@ -6,7 +6,6 @@ import os
 import sys
 
 # Third-Party Libraries
-import boto3
 import pytest
 
 # cisagov Libraries
@@ -73,10 +72,9 @@ class TestLogLevels:
 
     @pytest.mark.parametrize("level", LOG_LEVELS)
     @pytest.mark.usefixtures("moto", "postgres_container")
-    def test_log_levels(self, args, level, monkeypatch):
+    def test_log_levels(self, args, ec2, level, monkeypatch):
         """Validate commandline log-level arguments."""
         # Create a dummy VPC
-        ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
 
@@ -115,11 +113,10 @@ class TestGuacuser:
     """Tests related to the addition of the guacuser."""
 
     def test_addition_of_guacuser(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected."""
         # Create a VPC
-        ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
 
@@ -161,11 +158,10 @@ class TestGuacuser:
         assert "(1 row)" in response
 
     def test_addition_of_guacuser_already_exists(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected when it already exists."""
         # Create a VPC
-        ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
 
@@ -213,14 +209,13 @@ class TestLinuxInstance:
     """Tests related to Linux instances."""
 
     def test_instance_creation(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding an instance works as expected."""
         # Create and populate a VPC with an EC2 instance
         #
         # TODO: Create a test fixture to reduce duplication of this EC2
         # setup code.  See cisagov/guacscanner#7 for more details.
-        ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
         subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
@@ -265,11 +260,10 @@ class TestLinuxInstance:
         assert instance_id in response
 
     def test_instance_stop(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that stopping an instance works as expected."""
         # Stop the existing EC2 instance
-        ec2 = boto3.client("ec2", "us-east-1")
         response = ec2.describe_instances()
         instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
         vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
@@ -291,11 +285,10 @@ class TestLinuxInstance:
         assert instance_id in response
 
     def test_instance_restart(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that restarting an instance works as expected."""
         # Restart the existing EC2 instance
-        ec2 = boto3.client("ec2", "us-east-1")
         response = ec2.describe_instances()
         instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
         vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
@@ -317,11 +310,10 @@ class TestLinuxInstance:
         assert instance_id in response
 
     def test_instance_terminate(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that terminating an instance works as expected."""
         # Terminate the existing EC2 instance
-        ec2 = boto3.client("ec2", "us-east-1")
         response = ec2.describe_instances()
         instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
         vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
@@ -346,14 +338,13 @@ class TestWindowsInstance:
     """Tests related to Windows instances."""
 
     def test_instance_creation(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that creating an instance works as expected."""
         # Create and populate a VPC with an EC2 instance
         #
         # TODO: Create a test fixture to reduce duplication of this EC2
         # setup code.  See cisagov/guacscanner#7 for more details.
-        ec2 = boto3.client("ec2", "us-east-1")
         vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
         vpc_id = vpc["Vpc"]["VpcId"]
         subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
@@ -400,11 +391,10 @@ class TestWindowsInstance:
         assert instance_id in response
 
     def test_instance_stop(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that stopping an instance works as expected."""
         # Stop the existing EC2 instance
-        ec2 = boto3.client("ec2", "us-east-1")
         response = ec2.describe_instances()
         instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
         vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
@@ -426,11 +416,10 @@ class TestWindowsInstance:
         assert instance_id in response
 
     def test_instance_restart(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that restarting an instance works as expected."""
         # Restart the existing EC2 instance
-        ec2 = boto3.client("ec2", "us-east-1")
         response = ec2.describe_instances()
         instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
         vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]
@@ -452,11 +441,10 @@ class TestWindowsInstance:
         assert instance_id in response
 
     def test_instance_terminate(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, args, ec2, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that terminating an instance works as expected."""
         # Terminate the existing EC2 instance
-        ec2 = boto3.client("ec2", "us-east-1")
         response = ec2.describe_instances()
         instance_id = response["Reservations"][0]["Instances"][0]["InstanceId"]
         vpc_id = response["Reservations"][0]["Instances"][0]["VpcId"]

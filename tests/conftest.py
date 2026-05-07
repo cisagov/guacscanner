@@ -8,6 +8,7 @@ import os
 import sys
 
 # Third-Party Libraries
+import boto3
 from moto import mock_aws
 import pytest
 from python_on_whales import DockerClient
@@ -39,6 +40,12 @@ def moto(aws_credentials):
     mock.start()
     yield mock
     mock.stop()
+
+
+@pytest.fixture(scope="class")
+def ec2(moto):
+    """Mock EC2 boto3 client."""
+    return boto3.client("ec2", "us-east-1")
 
 
 # This is a "factory as fixture":
