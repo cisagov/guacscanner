@@ -44,7 +44,7 @@ def moto(aws_credentials):
 def dockerc():
     """Start up the Docker composition."""
     docker = DockerClient(compose_files=["tests/compose.yml"])
-    docker.compose.up(detach=True, wait=True, wait_timeout=60)
+    docker.compose.up(detach=True, start=False, wait=True, wait_timeout=60)
     yield docker
     # Since this Docker composition includes data volumes, we want to
     # remove volumes as well when we bring the composition down so we
@@ -60,7 +60,7 @@ def postgres_container(dockerc):
     dockerc.compose.up(detach=True, services=["postgres"], wait=True, wait_timeout=60)
     # Find the container by name even if it is stopped already
     yield dockerc.compose.ps(services=["postgres"], all=True)[0]
-    dockerc.compose.down(services=["postgres"], volumes=True)
+    dockerc.compose.down(services=["postgres"], timeout=60, volumes=True)
 
 
 @pytest.fixture(scope="session")
