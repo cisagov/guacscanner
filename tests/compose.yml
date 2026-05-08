@@ -57,7 +57,8 @@ services:
         /opt/guacamole/bin/entrypoint.sh
     container_name: guacamole
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
       GUACD_HOSTNAME: guacd
       GUACD_PORT: 4822
