@@ -78,14 +78,22 @@ def subnet_id(ec2, vpc_cidr, vpc_id):
     return subnet["Subnet"]["SubnetId"]
 
 
-@pytest.fixture(scope="class")
-def linux_instance_id(ec2, subnet_id):
-    """Create a Linux instance."""
+@pytest.fixture(scope="class", params=["Linux", "Windows"])
+def instance(ec2, request, subnet_id):
+    """Create an instance running the specified OS."""
+    os = request.param
+    if os.lower() == "linux":
+        ami = "amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"
+    elif os.lower() == "windows":
+        ami = "Windows_Server-2016-English-Full-SQL_2017_Enterprise-2017.10.13"
+    else:
+        raise ValueError(f"{os} is not a valid value for the instance OS.")
+
     amis = ec2.describe_images(
         Filters=[
             {
                 "Name": "Name",
-                "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"],
+                "Values": [ami],
             }
         ]
     )
@@ -100,44 +108,15 @@ def linux_instance_id(ec2, subnet_id):
         TagSpecifications=[
             {
                 "ResourceType": "instance",
-                "Tags": [{"Key": "Name", "Value": "Linux"}],
+                "Tags": [{"Key": "Name", "Value": os.capitalize()}],
             }
         ],
     )
 
-    return response["Instances"][0]["InstanceId"]
-
-
-@pytest.fixture(scope="class")
-def windows_instance_id(ec2, subnet_id):
-    """Create a Windows instance."""
-    amis = ec2.describe_images(
-        Filters=[
-            {
-                "Name": "Name",
-                "Values": [
-                    "Windows_Server-2016-English-Full-SQL_2017_Enterprise-2017.10.13",
-                ],
-            }
-        ]
-    )
-    ami = amis["Images"][0]
-    ami_id = ami["ImageId"]
-
-    response = ec2.run_instances(
-        ImageId=ami_id,
-        SubnetId=subnet_id,
-        MaxCount=1,
-        MinCount=1,
-        TagSpecifications=[
-            {
-                "ResourceType": "instance",
-                "Tags": [{"Key": "Name", "Value": "Windows"}],
-            }
-        ],
-    )
-
-    return response["Instances"][0]["InstanceId"]
+    return {
+        "id": response["Instances"][0]["InstanceId"],
+        "os": os,
+    }
 
 
 # This is a "factory as fixture":

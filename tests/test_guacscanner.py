@@ -185,8 +185,8 @@ class TestGuacuser:
         assert "(1 row)" in response
 
 
-class TestLinuxInstance:
-    """Tests related to Linux instances."""
+class TestInstanceLifecycle:
+    """Tests related to instance lifecycle."""
 
     @staticmethod
     def __query_connections(postgres_container, postgres_db_name, postgres_username):
@@ -203,187 +203,96 @@ class TestLinuxInstance:
     def test_instance_creation(
         self,
         args,
-        linux_instance_id,
+        instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that adding an instance works as expected."""
+        instance_id = instance["id"]
+        instance_os = instance["os"]
         args()
+
         guacscanner.guacscanner.main()
 
-        response = TestLinuxInstance.__query_connections(
+        response = TestInstanceLifecycle.__query_connections(
             postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
-        assert "Linux" in response
-        assert linux_instance_id in response
+        assert instance_os in response
+        assert instance_id in response
 
     def test_instance_stop(
         self,
         args,
         ec2,
-        linux_instance_id,
+        instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that stopping an instance works as expected."""
+        instance_id = instance["id"]
+        instance_os = instance["os"]
+
         # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[linux_instance_id])
+        ec2.stop_instances(InstanceIds=[instance_id])
 
         args()
         guacscanner.guacscanner.main()
 
-        response = TestLinuxInstance.__query_connections(
+        response = TestInstanceLifecycle.__query_connections(
             postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
-        assert "Linux" in response
-        assert linux_instance_id in response
+        assert instance_os in response
+        assert instance_id in response
 
     def test_instance_restart(
         self,
         args,
         ec2,
-        linux_instance_id,
+        instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that restarting an instance works as expected."""
+        instance_id = instance["id"]
+        instance_os = instance["os"]
+
         # Restart the existing EC2 instance
-        ec2.start_instances(InstanceIds=[linux_instance_id])
+        ec2.start_instances(InstanceIds=[instance_id])
 
         args()
         guacscanner.guacscanner.main()
 
-        response = TestLinuxInstance.__query_connections(
+        response = TestInstanceLifecycle.__query_connections(
             postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
-        assert "Linux" in response
-        assert linux_instance_id in response
+        assert instance_os in response
+        assert instance_id in response
 
     def test_instance_terminate(
         self,
         args,
         ec2,
-        linux_instance_id,
+        instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that terminating an instance works as expected."""
+        instance_id = instance["id"]
+
         # Terminate the existing EC2 instance
-        ec2.terminate_instances(InstanceIds=[linux_instance_id])
+        ec2.terminate_instances(InstanceIds=[instance_id])
 
         args()
         guacscanner.guacscanner.main()
 
-        response = TestLinuxInstance.__query_connections(
-            postgres_container, postgres_db_name, postgres_username
-        )
-        assert "(0 rows)" in response
-
-
-class TestWindowsInstance:
-    """Tests related to Windows instances."""
-
-    @staticmethod
-    def __query_connections(postgres_container, postgres_db_name, postgres_username):
-        """Query the database for all guacamole connections."""
-        return postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
-        )
-
-    def test_instance_creation(
-        self,
-        args,
-        postgres_container,
-        postgres_db_name,
-        postgres_username,
-        windows_instance_id,
-    ):
-        """Verify that creating an instance works as expected."""
-        args()
-        guacscanner.guacscanner.main()
-
-        response = TestWindowsInstance.__query_connections(
-            postgres_container, postgres_db_name, postgres_username
-        )
-        assert "(1 row)" in response
-        assert "Windows" in response
-        assert windows_instance_id in response
-
-    def test_instance_stop(
-        self,
-        args,
-        ec2,
-        postgres_container,
-        postgres_db_name,
-        postgres_username,
-        windows_instance_id,
-    ):
-        """Verify that stopping an instance works as expected."""
-        # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[windows_instance_id])
-
-        args()
-        guacscanner.guacscanner.main()
-
-        response = TestWindowsInstance.__query_connections(
-            postgres_container, postgres_db_name, postgres_username
-        )
-        assert "(1 row)" in response
-        assert "Windows" in response
-        assert windows_instance_id in response
-
-    def test_instance_restart(
-        self,
-        args,
-        ec2,
-        postgres_container,
-        postgres_db_name,
-        postgres_username,
-        windows_instance_id,
-    ):
-        """Verify that restarting an instance works as expected."""
-        # Restart the existing EC2 instance
-        ec2.start_instances(InstanceIds=[windows_instance_id])
-
-        args()
-        guacscanner.guacscanner.main()
-
-        response = TestWindowsInstance.__query_connections(
-            postgres_container, postgres_db_name, postgres_username
-        )
-        assert "(1 row)" in response
-        assert "Windows" in response
-        assert windows_instance_id in response
-
-    def test_instance_terminate(
-        self,
-        args,
-        ec2,
-        postgres_container,
-        postgres_db_name,
-        postgres_username,
-        windows_instance_id,
-    ):
-        """Verify that terminating an instance works as expected."""
-        # Terminate the existing EC2 instance
-        ec2.terminate_instances(InstanceIds=[windows_instance_id])
-
-        args()
-        guacscanner.guacscanner.main()
-
-        response = TestWindowsInstance.__query_connections(
+        response = TestInstanceLifecycle.__query_connections(
             postgres_container, postgres_db_name, postgres_username
         )
         assert "(0 rows)" in response
