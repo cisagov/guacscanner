@@ -71,7 +71,7 @@ class TestLogLevels:
     """Tests related to setting the log level."""
 
     @pytest.mark.parametrize("level", LOG_LEVELS)
-    @pytest.mark.usefixtures("moto", "postgres_container")
+    @pytest.mark.usefixtures("postgres_container")
     def test_log_levels(self, args, level, monkeypatch):
         """Validate commandline log-level arguments."""
         args(level)
@@ -104,7 +104,6 @@ class TestLogLevels:
         assert return_code == 1, "main() should exit with error"
 
 
-@pytest.mark.usefixtures("moto")
 class TestGuacuser:
     """Tests related to the addition of the guacuser."""
 
@@ -192,7 +191,6 @@ class TestGuacuser:
         assert "(1 row)" in response
 
 
-@pytest.mark.usefixtures("moto")
 class TestLinuxInstance:
     """Tests related to Linux instances."""
 
@@ -303,7 +301,6 @@ class TestLinuxInstance:
         assert "(0 rows)" in response
 
 
-@pytest.mark.usefixtures("moto")
 class TestWindowsInstance:
     """Tests related to Windows instances."""
 
