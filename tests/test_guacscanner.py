@@ -203,16 +203,14 @@ class TestInstanceLifecycle:
     def test_instance_creation(
         self,
         args,
-        instance,
+        instance_id,
+        instance_os,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that adding an instance works as expected."""
-        instance_id = instance["id"]
-        instance_os = instance["os"]
         args()
-
         guacscanner.guacscanner.main()
 
         response = TestInstanceLifecycle.__query_connections(
@@ -226,15 +224,13 @@ class TestInstanceLifecycle:
         self,
         args,
         ec2,
-        instance,
+        instance_id,
+        instance_os,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that stopping an instance works as expected."""
-        instance_id = instance["id"]
-        instance_os = instance["os"]
-
         # Stop the existing EC2 instance
         ec2.stop_instances(InstanceIds=[instance_id])
 
@@ -252,15 +248,13 @@ class TestInstanceLifecycle:
         self,
         args,
         ec2,
-        instance,
+        instance_id,
+        instance_os,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that restarting an instance works as expected."""
-        instance_id = instance["id"]
-        instance_os = instance["os"]
-
         # Restart the existing EC2 instance
         ec2.start_instances(InstanceIds=[instance_id])
 
@@ -278,14 +272,12 @@ class TestInstanceLifecycle:
         self,
         args,
         ec2,
-        instance,
+        instance_id,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that terminating an instance works as expected."""
-        instance_id = instance["id"]
-
         # Terminate the existing EC2 instance
         ec2.terminate_instances(InstanceIds=[instance_id])
 

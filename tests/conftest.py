@@ -119,6 +119,18 @@ def instance(ec2, request, subnet_id):
     }
 
 
+@pytest.fixture(scope="class")
+def instance_id(instance):
+    """Return the instance ID."""
+    return instance["id"]
+
+
+@pytest.fixture(scope="class")
+def instance_os(instance):
+    """Return the instance OS."""
+    return instance["os"]
+
+
 # This is a "factory as fixture":
 # https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures
 @pytest.fixture
