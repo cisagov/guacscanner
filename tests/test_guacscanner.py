@@ -107,18 +107,37 @@ class TestLogLevels:
 class TestGuacuser:
     """Tests related to the addition of the guacuser."""
 
-    def test_addition_of_guacuser(
-        self, args, postgres_container, postgres_db_name, postgres_username
-    ):
-        """Verify that adding the guacuser works as expected."""
-        # Verify that guacuser does not yet exist
-        response = postgres_container.execute(
+    @staticmethod
+    def __query_entities(postgres_container, postgres_db_name, postgres_username):
+        """Query the database for all guacamole entities."""
+        return postgres_container.execute(
             command=[
                 "psql",
                 "--command=SELECT name FROM guacamole_entity;",
                 f"--dbname={postgres_db_name}",
                 f"--username={postgres_username}",
             ]
+        )
+
+    @staticmethod
+    def __query_users(postgres_container, postgres_db_name, postgres_username):
+        """Query the database for a count of all guacamole users."""
+        return postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT COUNT(*) FROM guacamole_user;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+
+    def test_addition_of_guacuser(
+        self, args, postgres_container, postgres_db_name, postgres_username
+    ):
+        """Verify that adding the guacuser works as expected."""
+        # Verify that guacuser does not yet exist
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "guacadmin" in response
         assert "guacuser" not in response
@@ -127,24 +146,14 @@ class TestGuacuser:
         # First run creates guacuser.
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT name FROM guacamole_entity;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "guacadmin" in response
         assert "guacuser" in response
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT COUNT(*) FROM guacamole_user;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestGuacuser.__query_users(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
 
@@ -153,13 +162,8 @@ class TestGuacuser:
     ):
         """Verify that adding the guacuser works as expected when it already exists."""
         # Verify that guacuser already exists
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT name FROM guacamole_entity;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "guacadmin" in response
         assert "guacuser" in response
@@ -169,30 +173,32 @@ class TestGuacuser:
         # Second run exercises the already-exists/idempotency path.
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT name FROM guacamole_entity;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "guacadmin" in response
         assert "guacuser" in response
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT COUNT(*) FROM guacamole_user;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestGuacuser.__query_users(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
 
 
 class TestLinuxInstance:
     """Tests related to Linux instances."""
+
+    @staticmethod
+    def __query_connections(postgres_container, postgres_db_name, postgres_username):
+        """Query the database for all guacamole connections."""
+        return postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT connection_name FROM guacamole_connection;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
 
     def test_instance_creation(
         self,
@@ -206,13 +212,8 @@ class TestLinuxInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestLinuxInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
         assert "Linux" in response
@@ -234,13 +235,8 @@ class TestLinuxInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestLinuxInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
         assert "Linux" in response
@@ -262,13 +258,8 @@ class TestLinuxInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestLinuxInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
         assert "Linux" in response
@@ -290,7 +281,19 @@ class TestLinuxInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
+        response = TestLinuxInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "(0 rows)" in response
+
+
+class TestWindowsInstance:
+    """Tests related to Windows instances."""
+
+    @staticmethod
+    def __query_connections(postgres_container, postgres_db_name, postgres_username):
+        """Query the database for all guacamole connections."""
+        return postgres_container.execute(
             command=[
                 "psql",
                 "--command=SELECT connection_name FROM guacamole_connection;",
@@ -298,11 +301,6 @@ class TestLinuxInstance:
                 f"--username={postgres_username}",
             ]
         )
-        assert "(0 rows)" in response
-
-
-class TestWindowsInstance:
-    """Tests related to Windows instances."""
 
     def test_instance_creation(
         self,
@@ -316,13 +314,8 @@ class TestWindowsInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestWindowsInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
         assert "Windows" in response
@@ -344,13 +337,8 @@ class TestWindowsInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestWindowsInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
         assert "Windows" in response
@@ -372,13 +360,8 @@ class TestWindowsInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestWindowsInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(1 row)" in response
         assert "Windows" in response
@@ -400,12 +383,7 @@ class TestWindowsInstance:
         args()
         guacscanner.guacscanner.main()
 
-        response = postgres_container.execute(
-            command=[
-                "psql",
-                "--command=SELECT connection_name FROM guacamole_connection;",
-                f"--dbname={postgres_db_name}",
-                f"--username={postgres_username}",
-            ]
+        response = TestWindowsInstance.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
         )
         assert "(0 rows)" in response
