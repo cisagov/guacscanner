@@ -97,10 +97,10 @@ class TestLogLevels:
         """Validate bad log-level argument returns error."""
         monkeypatch.setattr(sys, "argv", ["bogus", "--log-level=emergency"])
         return_code = None
-        try:
+        with pytest.raises(SystemExit) as sys_exit:
             guacscanner.guacscanner.main()
-        except SystemExit as sys_exit:
-            return_code = sys_exit.code
+
+        return_code = sys_exit.value.code
         assert return_code == 1, "main() should exit with error"
 
 
