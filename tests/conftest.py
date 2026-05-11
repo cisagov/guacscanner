@@ -113,9 +113,12 @@ def instance(ec2, request, subnet_id):
         ],
     )
 
+    instance = response["Instances"][0]
     return {
-        "id": response["Instances"][0]["InstanceId"],
+        "id": instance["InstanceId"],
         "os": os,
+        "private_ip": instance["PrivateIpAddress"],
+        "public_ip": instance.get("PublicIpAddress", None),
     }
 
 
@@ -123,6 +126,21 @@ def instance(ec2, request, subnet_id):
 def instance_id(instance):
     """Return the instance ID."""
     return instance["id"]
+
+
+@pytest.fixture(scope="class")
+def instance_private_ip(instance):
+    """Return the private IP for the instance."""
+    return instance["private_ip"]
+
+
+@pytest.fixture(scope="class")
+def instance_public_ip(instance):
+    """Return the public IP for the instance.
+
+    Returns None if the instance does not have a public IP.
+    """
+    return instance["public_ip"]
 
 
 @pytest.fixture(scope="class")

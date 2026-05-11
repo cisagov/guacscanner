@@ -204,6 +204,8 @@ class TestInstanceLifecycle:
     def __check_instance(
         instance_id,
         instance_os,
+        instance_private_ip,
+        instance_public_ip,
         postgres_container,
         postgres_db_name,
         postgres_username,
@@ -214,14 +216,19 @@ class TestInstanceLifecycle:
         )
 
         assert "(1 row)" in response
-        assert instance_os in response
         assert instance_id in response
+        assert instance_os in response
+        assert instance_private_ip in response
+        if instance_public_ip is not None:
+            assert instance_public_ip in response
 
     def test_instance_creation(
         self,
         args,
         instance_id,
         instance_os,
+        instance_private_ip,
+        instance_public_ip,
         postgres_container,
         postgres_db_name,
         postgres_username,
@@ -233,6 +240,8 @@ class TestInstanceLifecycle:
         TestInstanceLifecycle.__check_instance(
             instance_id,
             instance_os,
+            instance_private_ip,
+            instance_public_ip,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -244,6 +253,8 @@ class TestInstanceLifecycle:
         ec2,
         instance_id,
         instance_os,
+        instance_private_ip,
+        instance_public_ip,
         postgres_container,
         postgres_db_name,
         postgres_username,
@@ -258,6 +269,8 @@ class TestInstanceLifecycle:
         TestInstanceLifecycle.__check_instance(
             instance_id,
             instance_os,
+            instance_private_ip,
+            instance_public_ip,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -269,6 +282,8 @@ class TestInstanceLifecycle:
         ec2,
         instance_id,
         instance_os,
+        instance_private_ip,
+        instance_public_ip,
         postgres_container,
         postgres_db_name,
         postgres_username,
@@ -283,6 +298,8 @@ class TestInstanceLifecycle:
         TestInstanceLifecycle.__check_instance(
             instance_id,
             instance_os,
+            instance_private_ip,
+            instance_public_ip,
             postgres_container,
             postgres_db_name,
             postgres_username,
