@@ -200,6 +200,23 @@ class TestInstanceLifecycle:
             ]
         )
 
+    @staticmethod
+    def __check_instance(
+        instance_id,
+        instance_os,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
+    ):
+        """Check that the connection for the single instance is as expected."""
+        response = TestInstanceLifecycle.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
+        )
+
+        assert "(1 row)" in response
+        assert instance_os in response
+        assert instance_id in response
+
     def test_instance_creation(
         self,
         args,
@@ -213,12 +230,13 @@ class TestInstanceLifecycle:
         args()
         guacscanner.guacscanner.main()
 
-        response = TestInstanceLifecycle.__query_connections(
-            postgres_container, postgres_db_name, postgres_username
+        TestInstanceLifecycle.__check_instance(
+            instance_id,
+            instance_os,
+            postgres_container,
+            postgres_db_name,
+            postgres_username,
         )
-        assert "(1 row)" in response
-        assert instance_os in response
-        assert instance_id in response
 
     def test_instance_stop(
         self,
@@ -237,12 +255,13 @@ class TestInstanceLifecycle:
         args()
         guacscanner.guacscanner.main()
 
-        response = TestInstanceLifecycle.__query_connections(
-            postgres_container, postgres_db_name, postgres_username
+        TestInstanceLifecycle.__check_instance(
+            instance_id,
+            instance_os,
+            postgres_container,
+            postgres_db_name,
+            postgres_username,
         )
-        assert "(1 row)" in response
-        assert instance_os in response
-        assert instance_id in response
 
     def test_instance_restart(
         self,
@@ -261,12 +280,13 @@ class TestInstanceLifecycle:
         args()
         guacscanner.guacscanner.main()
 
-        response = TestInstanceLifecycle.__query_connections(
-            postgres_container, postgres_db_name, postgres_username
+        TestInstanceLifecycle.__check_instance(
+            instance_id,
+            instance_os,
+            postgres_container,
+            postgres_db_name,
+            postgres_username,
         )
-        assert "(1 row)" in response
-        assert instance_os in response
-        assert instance_id in response
 
     def test_instance_terminate(
         self,
