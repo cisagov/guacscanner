@@ -79,19 +79,18 @@ class TestLogLevels:
         assert (
             logging.root.hasHandlers() is False
         ), "root logger should not have handlers yet"
-        return_code = None
-        try:
-            guacscanner.guacscanner.main()
-        except SystemExit as sys_exit:
-            return_code = sys_exit.code
-            assert return_code is None, "main() should return success"
-            assert (
-                logging.root.hasHandlers() is True
-            ), "root logger should now have a handler"
-            assert (
-                logging.getLevelName(logging.root.getEffectiveLevel()) == level.upper()
-            ), f"root logger level should be set to {level.upper()}"
-            assert return_code is None, "main() should return success"
+
+        guacscanner.guacscanner.main()
+
+        assert (
+            logging.root.hasHandlers() is True
+        ), "root logger should now have a handler"
+        # Here we check the numerical levels since, e.g., WARN and
+        # WARNING are equivalent levels with different names, as are
+        # FATAL and CRITICAL.
+        assert logging.root.getEffectiveLevel() == logging.getLevelName(
+            level
+        ), f"root logger level should be set to {level.upper()} or equivalent"
 
     def test_bad_log_level(self, monkeypatch):
         """Validate bad log-level argument returns error."""
