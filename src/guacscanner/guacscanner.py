@@ -23,8 +23,9 @@ Usage:
 Options:
   -h --help              Show this message.
   --log-level=LEVEL    If specified, then the log level will be set to
-    the specified value.  Valid values are "debug", "info", "warning",
-    "error", and "critical". [default: info]
+    the specified value.  Valid values are "notset", "debug", "info",
+    "warning", "warn", "error", "fatal", and "critical". [default:
+    info]
   --oneshot    If present then the loop that adds (removes)
     connections for new (terminated) instances will only be run once.
   --postgres-hostname=HOSTNAME    If specified then the specified
