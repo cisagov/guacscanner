@@ -283,7 +283,6 @@ class TestInstanceLifecycle:
         instance_id,
         instance_os,
         instance_private_ip,
-        instance_public_ip,
         postgres_container,
         postgres_db_name,
         postgres_username,
@@ -295,11 +294,18 @@ class TestInstanceLifecycle:
         args()
         guacscanner.guacscanner.main()
 
+        # We can't simply use instance_public_ip here because restarting
+        # the instance likely will have changed the public IP, and
+        # guacscanner will have persisted this change to the database.
+        response = ec2.describe_instances(InstanceIds=[instance_id])
+        instance = response["Reservations"][0]["Instances"][0]
+        new_public_ip = instance.get("PublicIpAddress", None)
+
         TestInstanceLifecycle.__check_instance(
             instance_id,
             instance_os,
             instance_private_ip,
-            instance_public_ip,
+            new_public_ip,
             postgres_container,
             postgres_db_name,
             postgres_username,
