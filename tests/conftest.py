@@ -4,6 +4,7 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 """
 
 # Standard Python Libraries
+import itertools
 import os
 import random
 import sys
@@ -78,16 +79,24 @@ def subnet_id(ec2, vpc_cidr, vpc_id):
     return subnet["Subnet"]["SubnetId"]
 
 
-@pytest.fixture(scope="class", params=["Linux", "Windows"])
+@pytest.fixture(
+    scope="class",
+    # Associate a nice name with each param value
+    ids=lambda x: f"{x[0]} {'with' if x[1] else 'without'} public IP",
+    # Returns the Cartesian product as a list of tuples
+    params=itertools.product(["Linux", "Windows"], [True, False]),
+)
 def instance(ec2, request, subnet_id):
     """Create an instance running the specified OS."""
-    os = request.param
+    os = request.param[0]
     if os.lower() == "linux":
         ami = "amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"
     elif os.lower() == "windows":
         ami = "Windows_Server-2016-English-Full-SQL_2017_Enterprise-2017.10.13"
     else:
         raise ValueError(f"{os} is not a valid value for the instance OS.")
+
+    assign_public_ip = request.param[1]
 
     amis = ec2.describe_images(
         Filters=[
@@ -102,9 +111,15 @@ def instance(ec2, request, subnet_id):
 
     response = ec2.run_instances(
         ImageId=ami_id,
-        SubnetId=subnet_id,
         MaxCount=1,
         MinCount=1,
+        NetworkInterfaces=[
+            {
+                "AssociatePublicIpAddress": assign_public_ip,
+                "DeviceIndex": 0,
+                "SubnetId": subnet_id,
+            }
+        ],
         TagSpecifications=[
             {
                 "ResourceType": "instance",
