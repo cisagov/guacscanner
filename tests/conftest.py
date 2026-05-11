@@ -176,6 +176,7 @@ def args(monkeypatch, vpc_id):
             sys,
             "argv",
             [
+                "guacscanner",
                 f"--log-level={log_level}",
                 "--oneshot",
                 "--postgres-hostname=localhost",
