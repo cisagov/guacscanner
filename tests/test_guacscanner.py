@@ -121,11 +121,11 @@ class TestGuacuser:
 
     @staticmethod
     def __query_users(postgres_container, postgres_db_name, postgres_username):
-        """Query the database for a count of all guacamole users."""
+        """Query the database for all guacamole users."""
         return postgres_container.execute(
             command=[
                 "psql",
-                "--command=SELECT COUNT(*) FROM guacamole_user;",
+                "--command=SELECT * FROM guacamole_user;",
                 f"--dbname={postgres_db_name}",
                 f"--username={postgres_username}",
             ]
@@ -155,7 +155,7 @@ class TestGuacuser:
         response = TestGuacuser.__query_users(
             postgres_container, postgres_db_name, postgres_username
         )
-        assert "(1 row)" in response
+        assert "(2 rows)" in response
 
     def test_addition_of_guacuser_already_exists(
         self, args, postgres_container, postgres_db_name, postgres_username
@@ -182,7 +182,7 @@ class TestGuacuser:
         response = TestGuacuser.__query_users(
             postgres_container, postgres_db_name, postgres_username
         )
-        assert "(1 row)" in response
+        assert "(2 rows)" in response
 
 
 class TestInstanceLifecycle:
