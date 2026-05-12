@@ -160,6 +160,10 @@ class TestGuacuser:
         self, args, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected when it already exists."""
+        args()
+        # First run creates guacuser.
+        guacscanner.guacscanner.main()
+
         # Verify that guacuser already exists
         response = TestGuacuser.__query_entities(
             postgres_container, postgres_db_name, postgres_username
@@ -168,7 +172,6 @@ class TestGuacuser:
         assert "guacuser" in response
 
         args()
-
         # Second run exercises the already-exists/idempotency path.
         guacscanner.guacscanner.main()
 
@@ -259,6 +262,9 @@ class TestInstanceLifecycle:
         postgres_username,
     ):
         """Verify that stopping an instance works as expected."""
+        args()
+        guacscanner.guacscanner.main()
+
         # Stop the existing EC2 instance
         ec2.stop_instances(InstanceIds=[instance_id])
 
@@ -287,6 +293,15 @@ class TestInstanceLifecycle:
         postgres_username,
     ):
         """Verify that restarting an instance works as expected."""
+        args()
+        guacscanner.guacscanner.main()
+
+        # Stop the existing EC2 instance
+        ec2.stop_instances(InstanceIds=[instance_id])
+
+        args()
+        guacscanner.guacscanner.main()
+
         # Restart the existing EC2 instance
         ec2.start_instances(InstanceIds=[instance_id])
 
@@ -320,6 +335,9 @@ class TestInstanceLifecycle:
         postgres_username,
     ):
         """Verify that terminating an instance works as expected."""
+        args()
+        guacscanner.guacscanner.main()
+
         # Terminate the existing EC2 instance
         ec2.terminate_instances(InstanceIds=[instance_id])
 

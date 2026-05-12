@@ -31,7 +31,7 @@ def aws_credentials():
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def moto(aws_credentials):
     """Manually create a moto mock.
 
@@ -44,13 +44,13 @@ def moto(aws_credentials):
     mock.stop()
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def ec2(moto):
     """Mock EC2 boto3 client."""
     return boto3.client("ec2", "us-east-1")
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def vpc_cidr():
     """Create a random /24 CIDR block inside of 10.0.0.0/8."""
     # The following lines generate warnings from bandit (B311) and
@@ -65,14 +65,14 @@ def vpc_cidr():
     )
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def vpc_id(ec2, vpc_cidr):
     """Create a VPC and return the VPC ID."""
     vpc = ec2.create_vpc(CidrBlock=vpc_cidr)
     return vpc["Vpc"]["VpcId"]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def subnet_id(ec2, vpc_cidr, vpc_id):
     """Create a single subnet that takes up the entire VPC and return the subnet ID."""
     subnet = ec2.create_subnet(CidrBlock=vpc_cidr, VpcId=vpc_id)
@@ -80,7 +80,6 @@ def subnet_id(ec2, vpc_cidr, vpc_id):
 
 
 @pytest.fixture(
-    scope="class",
     # Associate a nice name with each param value
     ids=lambda x: f"{x[0]} {'with' if x[1] else 'without'} public IP",
     # Returns the Cartesian product as a list of tuples
@@ -137,19 +136,19 @@ def instance(ec2, request, subnet_id):
     }
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def instance_id(instance):
     """Return the instance ID."""
     return instance["id"]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def instance_private_ip(instance):
     """Return the private IP for the instance."""
     return instance["private_ip"]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def instance_public_ip(instance):
     """Return the public IP for the instance.
 
@@ -158,7 +157,7 @@ def instance_public_ip(instance):
     return instance["public_ip"]
 
 
-@pytest.fixture(scope="class")
+@pytest.fixture
 def instance_os(instance):
     """Return the instance OS."""
     return instance["os"]
@@ -195,7 +194,7 @@ def args(monkeypatch, vpc_id):
     return _args
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def dockerc():
     """Start up the Docker composition."""
     docker = DockerClient(compose_files=["tests/compose.yml"])
@@ -207,9 +206,7 @@ def dockerc():
     docker.compose.down(volumes=True)
 
 
-# Using a scope of class here makes the PostgreSQL container have the
-# same scope as the moto fixture.
-@pytest.fixture(scope="class")
+@pytest.fixture
 def postgres_container(dockerc):
     """Return the postgres container from the Docker composition."""
     dockerc.compose.up(detach=True, services=["postgres"], wait=True, wait_timeout=60)
