@@ -6,6 +6,7 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 # Standard Python Libraries
 import itertools
 import os
+from pathlib import Path
 import random
 import sys
 
@@ -194,8 +195,38 @@ def args(monkeypatch, vpc_id):
     return _args
 
 
+@pytest.fixture(scope="session")
+def secrets_dir():
+    """Path representing the location of the secrets for the Docker composition."""
+    tests_dir = Path(__file__).parent
+    d = Path(tests_dir, "secrets")
+    d.mkdir()
+    yield d
+    d.rmdir()
+
+
 @pytest.fixture
-def dockerc():
+def postgres_password_secret(secrets_dir):
+    """Return a pathlib Path to the postgres password secret."""
+    f = Path(secrets_dir, "postgres-password")
+    f.unlink(missing_ok=True)
+    f.write_text("dummy_password")
+    yield f
+    f.unlink()
+
+
+@pytest.fixture(scope="session")
+def postgres_username_secret(secrets_dir):
+    """Return a pathlib Path to the postgres user name secret."""
+    f = Path(secrets_dir, "postgres-username")
+    f.unlink(missing_ok=True)
+    f.write_text("dummy_user")
+    yield f
+    f.unlink()
+
+
+@pytest.fixture
+def dockerc(postgres_password_secret, postgres_username_secret):
     """Start up the Docker composition."""
     docker = DockerClient(compose_files=["tests/compose.yml"])
     docker.compose.up(detach=True, start=False, wait=True, wait_timeout=60)
@@ -221,10 +252,7 @@ def postgres_db_name():
     return "guacamole_db"
 
 
-@pytest.fixture(scope="session")
-def postgres_username():
+@pytest.fixture
+def postgres_username(postgres_username_secret):
     """Return the username to use when connecting to the postgres instance."""
-    with open("tests/secrets/postgres-username") as file:
-        postgres_username = file.read().strip()
-
-    return postgres_username
+    return postgres_username_secret.read_text().strip()
