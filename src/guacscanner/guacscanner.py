@@ -874,11 +874,11 @@ def main() -> None:
     # ensure that any special characters (such as backslashes) are safely
     # escaped.
     db_connection_string = psycopg.conninfo.make_conninfo(
-        user=postgres_username,
-        password=postgres_password,
-        host=postgres_hostname,
-        port=postgres_port,
         dbname=postgres_db_name,
+        host=postgres_hostname,
+        password=postgres_password,
+        port=postgres_port,
+        user=postgres_username,
     )
 
     vpc_id = validated_args["--vpc-id"]
