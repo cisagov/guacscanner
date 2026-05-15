@@ -9,6 +9,7 @@ EXIT STATUS
 
 Usage:
   guacscanner [--log-level=LEVEL] [--oneshot] [--sleep=SECONDS]
+  [--postgres-hostname=HOSTNAME]
   [--postgres-password=PASSWORD|--postgres-password-file=FILENAME]
   [--postgres-username=USERNAME|--postgres-username-file=FILENAME]
   [--private-ssh-key=KEY|--private-ssh-key-file=FILENAME]
@@ -22,10 +23,14 @@ Usage:
 Options:
   -h --help              Show this message.
   --log-level=LEVEL    If specified, then the log level will be set to
-    the specified value.  Valid values are "debug", "info", "warning",
-    "error", and "critical". [default: info]
+    the specified value.  Valid values are "notset", "debug", "info",
+    "warning", "warn", "error", "fatal", and "critical". [default:
+    info]
   --oneshot    If present then the loop that adds (removes)
     connections for new (terminated) instances will only be run once.
+  --postgres-hostname=HOSTNAME    If specified then the specified
+    value will be used as the hostname when connecting to the
+    PostgreSQL database. [default: postgres]
   --postgres-password=PASSWORD    If specified then the specified
     value will be used as the password when connecting to the
     PostgreSQL database.  Otherwise, the password will be read from a
@@ -113,7 +118,6 @@ DEFAULT_ADD_INSTANCE_STATES = [
 DEFAULT_PASSWORD_LENGTH = 32
 DEFAULT_PASSWORD_SALT_LENGTH = 32
 DEFAULT_POSTGRES_DB_NAME = "guacamole_db"
-DEFAULT_POSTGRES_HOSTNAME = "postgres"
 DEFAULT_POSTGRES_PORT = 5432
 DEFAULT_REMOVE_INSTANCE_STATES = [
     "terminated",
@@ -123,6 +127,18 @@ DEFAULT_AMI_SKIP_REGEXES = [
     re.compile(r"^nessus-.*$"),
     re.compile(r"^samba-.*$"),
 ]
+
+LOG_LEVELS: list[str] = []
+if sys.version_info >= (3, 11):
+    LOG_LEVELS = [*logging.getLevelNamesMapping()]
+else:
+    # The logging.getLevelNamesMapping method was only introduced in
+    # Python 3.11.
+    LOG_LEVELS = [
+        logging.getLevelName(x)
+        for x in range(0, 101)
+        if not logging.getLevelName(x).startswith("Level")
+    ]
 
 # A precompiled regex
 VPC_ID_REGEX = re.compile(r"^vpc-([0-9a-f]{8}|[0-9a-f]{17})$")
@@ -769,9 +785,10 @@ def main() -> None:
             "--log-level": schema.And(
                 str,
                 schema.Use(str.lower),
-                lambda n: n in ("debug", "info", "warning", "error", "critical"),
+                lambda n: n in (level.lower() for level in LOG_LEVELS),
                 error="Possible values for --log-level are "
-                "debug, info, warning, error, and critical.",
+                + ", ".join([level.lower() for level in LOG_LEVELS])
+                + ".",
             ),
             "--sleep": schema.And(
                 schema.Use(float),
@@ -805,52 +822,53 @@ def main() -> None:
 
     add_instance_states = DEFAULT_ADD_INSTANCE_STATES
     postgres_db_name = DEFAULT_POSTGRES_DB_NAME
-    postgres_hostname = DEFAULT_POSTGRES_HOSTNAME
     postgres_port = DEFAULT_POSTGRES_PORT
     remove_instance_states = DEFAULT_REMOVE_INSTANCE_STATES
 
     oneshot = validated_args["--oneshot"]
     logging.debug("oneshot is %s.", oneshot)
 
+    postgres_hostname = validated_args["--postgres-hostname"]
+
     postgres_password = validated_args["--postgres-password"]
     if postgres_password is None:
         with open(validated_args["--postgres-password-file"]) as file:
-            postgres_password = file.read()
+            postgres_password = file.read().strip()
 
     postgres_username = validated_args["--postgres-username"]
     if postgres_username is None:
         with open(validated_args["--postgres-username-file"]) as file:
-            postgres_username = file.read()
+            postgres_username = file.read().strip()
 
     rdp_password = validated_args["--rdp-password"]
     if rdp_password is None:
         with open(validated_args["--rdp-password-file"]) as file:
-            rdp_password = file.read()
+            rdp_password = file.read().strip()
 
     rdp_username = validated_args["--rdp-username"]
     if rdp_username is None:
         with open(validated_args["--rdp-username-file"]) as file:
-            rdp_username = file.read()
+            rdp_username = file.read().strip()
 
     vnc_password = validated_args["--vnc-password"]
     if vnc_password is None:
         with open(validated_args["--vnc-password-file"]) as file:
-            vnc_password = file.read()
+            vnc_password = file.read().strip()
 
     vnc_username = validated_args["--vnc-username"]
     if vnc_username is None:
         with open(validated_args["--vnc-username-file"]) as file:
-            vnc_username = file.read()
+            vnc_username = file.read().strip()
 
     private_ssh_key = validated_args["--private-ssh-key"]
     if private_ssh_key is None:
         with open(validated_args["--private-ssh-key-file"]) as file:
-            private_ssh_key = file.read()
+            private_ssh_key = file.read().strip()
 
     windows_sftp_base = validated_args["--windows-sftp-base"]
     if windows_sftp_base is None:
         with open(validated_args["--windows-sftp-base-file"]) as file:
-            windows_sftp_base = file.read()
+            windows_sftp_base = file.read().strip()
 
     db_connection_string = (
         f"user={postgres_username} password={postgres_password} "
@@ -875,13 +893,11 @@ def main() -> None:
     else:
         ec2 = boto3.resource("ec2", region_name=region)
 
-    logging.info("Examining instances in VPC %s.", vpc_id)
-
-    instances = ec2.Vpc(vpc_id).instances.all()
     keep_looping = True
     guacuser_id = None
     while keep_looping:
-        time.sleep(validated_args["--sleep"])
+        if not validated_args["--oneshot"]:
+            time.sleep(validated_args["--sleep"])
 
         try:
             db_connection = psycopg.connect(
@@ -908,6 +924,8 @@ def main() -> None:
             else:
                 guacuser_id = get_entity_id(db_connection, "guacuser", "USER")
 
+        logging.info("Examining instances in VPC %s.", vpc_id)
+        instances = ec2.Vpc(vpc_id).instances.all()
         for instance in instances:
             ami = ec2.Image(instance.image_id)
             # Early exit if this instance is running an AMI that we

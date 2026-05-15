@@ -4,47 +4,47 @@
 import logging
 import os
 import sys
-from unittest.mock import MagicMock, patch
 
 # Third-Party Libraries
-import boto3
-from moto import mock_aws
-import psycopg
 import pytest
 
 # cisagov Libraries
 import guacscanner
 
-log_levels = (
-    "debug",
-    "info",
-    "warning",
-    "error",
-    "critical",
-)
+LOG_LEVELS: list[str] = []
+if sys.version_info >= (3, 11):
+    LOG_LEVELS = [*logging.getLevelNamesMapping()]
+else:
+    # The logging.getLevelNamesMapping method was only introduced in
+    # Python 3.11.
+    LOG_LEVELS = [
+        logging.getLevelName(x)
+        for x in range(0, 101)
+        if not logging.getLevelName(x).startswith("Level")
+    ]
 
 # define sources of version strings
 RELEASE_TAG = os.getenv("RELEASE_TAG")
 PROJECT_VERSION = guacscanner.__version__
 
-DUMMY_VPC_ID = "vpc-0123456789abcdef0"
 
+class TestVersion:
+    """Tests related to project version."""
 
-def test_stdout_version(capsys):
-    """Verify that version string sent to stdout agrees with the module version."""
-    with pytest.raises(SystemExit):
-        with patch.object(sys, "argv", ["bogus", "--version"]):
+    def test_stdout_version(self, capsys, monkeypatch):
+        """Verify that version string sent to stdout agrees with the module version."""
+        with pytest.raises(SystemExit):
+            monkeypatch.setattr(sys, "argv", ["bogus", "--version"])
             guacscanner.guacscanner.main()
-    captured = capsys.readouterr()
-    assert (
-        captured.out == f"{PROJECT_VERSION}\n"
-    ), "standard output by '--version' should agree with module.__version__"
+        captured = capsys.readouterr()
+        assert (
+            captured.out == f"{PROJECT_VERSION}\n"
+        ), "standard output by '--version' should agree with module.__version__"
 
-
-def test_running_as_module(capsys):
-    """Verify that the __main__.py file loads correctly."""
-    with pytest.raises(SystemExit):
-        with patch.object(sys, "argv", ["bogus", "--version"]):
+    def test_running_as_module(self, capsys, monkeypatch):
+        """Verify that the __main__.py file loads correctly."""
+        with pytest.raises(SystemExit):
+            monkeypatch.setattr(sys, "argv", ["bogus", "--version"])
             # F401 is a "Module imported but unused" warning. This import
             # emulates how this project would be run as a module. The only thing
             # being done by __main__ is importing the main entrypoint of the
@@ -52,456 +52,299 @@ def test_running_as_module(capsys):
             # import. As a result, we can safely ignore this warning.
             # cisagov Libraries
             import guacscanner.__main__  # noqa: F401
-    captured = capsys.readouterr()
-    assert (
-        captured.out == f"{PROJECT_VERSION}\n"
-    ), "standard output by '--version' should agree with module.__version__"
+        captured = capsys.readouterr()
+        assert (
+            captured.out == f"{PROJECT_VERSION}\n"
+        ), "standard output by '--version' should agree with module.__version__"
+
+    @pytest.mark.skipif(
+        RELEASE_TAG in [None, ""], reason="this is not a release (RELEASE_TAG not set)"
+    )
+    def test_release_version(self):
+        """Verify that release tag version agrees with the module version."""
+        assert (
+            RELEASE_TAG == f"v{PROJECT_VERSION}"
+        ), "RELEASE_TAG does not match the project version"
 
 
-@pytest.mark.skipif(
-    RELEASE_TAG in [None, ""], reason="this is not a release (RELEASE_TAG not set)"
-)
-def test_release_version():
-    """Verify that release tag version agrees with the module version."""
-    assert (
-        RELEASE_TAG == f"v{PROJECT_VERSION}"
-    ), "RELEASE_TAG does not match the project version"
+class TestLogLevels:
+    """Tests related to setting the log level."""
 
+    @pytest.mark.parametrize("level", LOG_LEVELS)
+    @pytest.mark.usefixtures("postgres_container")
+    def test_log_levels(self, args, level, monkeypatch):
+        """Validate commandline log-level arguments."""
+        args(level)
+        monkeypatch.setattr(logging.root, "handlers", [])
+        assert (
+            logging.root.hasHandlers() is False
+        ), "root logger should not have handlers yet"
 
-@mock_aws
-@pytest.mark.parametrize("level", log_levels)
-def test_log_levels(level):
-    """Validate commandline log-level arguments."""
-    with patch.object(
-        sys,
-        "argv",
-        [
-            f"--log-level={level}",
-            "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
-            "--private-ssh-key=dummy_key",
-            "--rdp-password=dummy_rdp_password",
-            "--rdp-username=dummy_rdp_username",
-            "--vnc-password=dummy_vnc_password",
-            "--vnc-username=dummy_vnc_username",
-            f"--vpc-id={DUMMY_VPC_ID}",
-            "--windows-sftp-base=/C:/Users/dummy_user",
-        ],
-    ):
-        with patch.object(logging.root, "handlers", []):
-            with patch.object(psycopg, "connect", return_value=MagicMock()):
-                assert (
-                    logging.root.hasHandlers() is False
-                ), "root logger should not have handlers yet"
-                return_code = None
-                try:
-                    guacscanner.guacscanner.main()
-                except SystemExit as sys_exit:
-                    return_code = sys_exit.code
-                    assert return_code is None, "main() should return success"
-                    assert (
-                        logging.root.hasHandlers() is True
-                    ), "root logger should now have a handler"
-                    assert (
-                        logging.getLevelName(logging.root.getEffectiveLevel())
-                        == level.upper()
-                    ), f"root logger level should be set to {level.upper()}"
-                    assert return_code is None, "main() should return success"
+        guacscanner.guacscanner.main()
 
+        assert (
+            logging.root.hasHandlers() is True
+        ), "root logger should now have a handler"
+        # Here we check the numerical levels since, e.g., WARN and
+        # WARNING are equivalent levels with different names, as are
+        # FATAL and CRITICAL.
+        assert logging.root.getEffectiveLevel() == logging.getLevelName(
+            level
+        ), f"root logger level should be set to {level.upper()} or equivalent"
 
-def test_bad_log_level():
-    """Validate bad log-level argument returns error."""
-    with patch.object(sys, "argv", ["bogus", "--log-level=emergency"]):
+    def test_bad_log_level(self, monkeypatch):
+        """Validate bad log-level argument returns error."""
+        monkeypatch.setattr(sys, "argv", ["bogus", "--log-level=emergency"])
         return_code = None
-        try:
+        with pytest.raises(SystemExit) as sys_exit:
             guacscanner.guacscanner.main()
-        except SystemExit as sys_exit:
-            return_code = sys_exit.code
+
+        return_code = sys_exit.value.code
         assert return_code == 1, "main() should exit with error"
 
 
-@mock_aws
-def test_addition_of_guacuser():
-    """Verify that adding the guacuser works as expected."""
-    # Create a VPC
-    ec2 = boto3.client("ec2", "us-east-1")
-    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-    vpc_id = vpc["Vpc"]["VpcId"]
+class TestGuacuser:
+    """Tests related to the addition of the guacuser."""
 
-    # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(
-        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-    )
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-    mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [
-        # Checking to see if guacuser exists and then adding it
-        {"count": 0},
-        {"entity_id": 1},
-    ]
-    mock_connection.__enter__.return_value = mock_connection
-    mock_connection.cursor.return_value = mock_cursor
+    @staticmethod
+    def __query_entities(postgres_container, postgres_db_name, postgres_username):
+        """Query the database for all guacamole entities."""
+        return postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT name FROM guacamole_entity;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
 
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "--log-level=debug",
-            "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
-            "--private-ssh-key=dummy_key",
-            "--rdp-password=dummy_rdp_password",
-            "--rdp-username=dummy_rdp_username",
-            "--vnc-password=dummy_vnc_password",
-            "--vnc-username=dummy_vnc_username",
-            f"--vpc-id={vpc_id}",
-            "--windows-sftp-base=/C:/Users/dummy_user",
-        ],
+    @staticmethod
+    def __query_users(postgres_container, postgres_db_name, postgres_username):
+        """Query the database for all guacamole users."""
+        return postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT * FROM guacamole_user;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
+
+    def test_addition_of_guacuser(
+        self, args, postgres_container, postgres_db_name, postgres_username
     ):
-        with patch.object(
-            psycopg, "connect", return_value=mock_connection
-        ) as mock_connect:
-            guacscanner.guacscanner.main()
-            mock_connect.assert_called_once()
-            mock_connection.cursor.assert_called()
-            mock_connection.commit.assert_called()
-            mock_cursor.fetchone.assert_called()
-            mock_cursor.execute.assert_called()
+        """Verify that adding the guacuser works as expected."""
+        # Verify that guacuser does not yet exist
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "guacadmin" in response
+        assert "guacuser" not in response
 
+        args()
+        # First run creates guacuser.
+        guacscanner.guacscanner.main()
 
-@mock_aws
-def test_guacuser_already_exists():
-    """Verify that the case where the guacuser already exists works as expected."""
-    # Create a VPC
-    ec2 = boto3.client("ec2", "us-east-1")
-    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-    vpc_id = vpc["Vpc"]["VpcId"]
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "guacadmin" in response
+        assert "guacuser" in response
 
-    # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(
-        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-    )
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-    mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [
-        # Checking to see if guacuser exists and then fetching its ID
-        {"count": 1},
-        {"entity_id": 1},
-    ]
-    mock_connection.__enter__.return_value = mock_connection
-    mock_connection.cursor.return_value = mock_cursor
+        response = TestGuacuser.__query_users(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "(2 rows)" in response
 
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "--log-level=debug",
-            "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
-            "--private-ssh-key=dummy_key",
-            "--rdp-password=dummy_rdp_password",
-            "--rdp-username=dummy_rdp_username",
-            "--vnc-password=dummy_vnc_password",
-            "--vnc-username=dummy_vnc_username",
-            f"--vpc-id={vpc_id}",
-            "--windows-sftp-base=/C:/Users/dummy_user",
-        ],
+    def test_addition_of_guacuser_already_exists(
+        self, args, postgres_container, postgres_db_name, postgres_username
     ):
-        with patch.object(
-            psycopg, "connect", return_value=mock_connection
-        ) as mock_connect:
-            guacscanner.guacscanner.main()
-            mock_connect.assert_called_once()
-            mock_connection.cursor.assert_called()
-            mock_connection.commit.assert_called()
-            mock_cursor.fetchone.assert_called()
-            mock_cursor.execute.assert_called()
+        """Verify that adding the guacuser works as expected when it already exists."""
+        args()
+        # First run creates guacuser.
+        guacscanner.guacscanner.main()
+
+        # Verify that guacuser already exists
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "guacadmin" in response
+        assert "guacuser" in response
+
+        args()
+        # Second run exercises the already-exists/idempotency path.
+        guacscanner.guacscanner.main()
+
+        response = TestGuacuser.__query_entities(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "guacadmin" in response
+        assert "guacuser" in response
+
+        response = TestGuacuser.__query_users(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "(2 rows)" in response
 
 
-@mock_aws
-def test_new_linux_instance():
-    """Verify that adding a new Linux instance works as expected."""
-    # Create and populate a VPC with an EC2 instance
-    #
-    # TODO: Create a test fixture to reduce duplication of this EC2
-    # setup code.  See cisagov/guacscanner#7 for more details.
-    ec2 = boto3.client("ec2", "us-east-1")
-    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-    vpc_id = vpc["Vpc"]["VpcId"]
-    subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
-    subnet_id = subnet["Subnet"]["SubnetId"]
-    amis = ec2.describe_images(
-        Filters=[
-            {"Name": "Name", "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"]}
-        ]
-    )
-    ami = amis["Images"][0]
-    ami_id = ami["ImageId"]
-    ec2.run_instances(
-        ImageId=ami_id,
-        SubnetId=subnet_id,
-        MaxCount=1,
-        MinCount=1,
-        TagSpecifications=[
-            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Linux"}]}
-        ],
-    )
+class TestInstanceLifecycle:
+    """Tests related to instance lifecycle."""
 
-    # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(
-        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-    )
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-    mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [
-        # Checking to see if guacuser exists and then adding it
-        {"count": 0},
-        {"entity_id": 1},
-        # Checking to see if the connection exists and then adding it
-        {"count": 0},
-        {"connection_id": 1},
-    ]
-    mock_connection.__enter__.return_value = mock_connection
-    mock_connection.cursor.return_value = mock_cursor
+    @staticmethod
+    def __query_connections(postgres_container, postgres_db_name, postgres_username):
+        """Query the database for all guacamole connections."""
+        return postgres_container.execute(
+            command=[
+                "psql",
+                "--command=SELECT connection_name FROM guacamole_connection;",
+                f"--dbname={postgres_db_name}",
+                f"--username={postgres_username}",
+            ]
+        )
 
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "--log-level=debug",
-            "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
-            "--private-ssh-key=dummy_key",
-            "--rdp-password=dummy_rdp_password",
-            "--rdp-username=dummy_rdp_username",
-            "--vnc-password=dummy_vnc_password",
-            "--vnc-username=dummy_vnc_username",
-            f"--vpc-id={vpc_id}",
-            "--windows-sftp-base=/C:/Users/dummy_user",
-        ],
+    @staticmethod
+    def __check_instance(
+        instance_id,
+        instance_os,
+        instance_private_ip,
+        instance_public_ip,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
-        with patch.object(
-            psycopg, "connect", return_value=mock_connection
-        ) as mock_connect:
-            guacscanner.guacscanner.main()
-            mock_connect.assert_called_once()
-            mock_connection.cursor.assert_called()
-            mock_connection.commit.assert_called()
-            mock_cursor.fetchone.assert_called()
-            mock_cursor.execute.assert_called()
-            mock_cursor.executemany.assert_called()
+        """Check that the connection for the single instance is as expected."""
+        response = TestInstanceLifecycle.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
+        )
 
+        assert "(1 row)" in response
+        assert instance_id in response
+        assert instance_os in response
+        assert instance_private_ip in response
+        if instance_public_ip is not None:
+            assert instance_public_ip in response
 
-@mock_aws
-def test_terminated_instance():
-    """Verify that adding a terminated instance works as expected."""
-    # Create and populate a VPC with a terminated EC2 instance
-    ec2 = boto3.client("ec2", "us-east-1")
-    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-    vpc_id = vpc["Vpc"]["VpcId"]
-    subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
-    subnet_id = subnet["Subnet"]["SubnetId"]
-    amis = ec2.describe_images(
-        Filters=[
-            {"Name": "Name", "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"]}
-        ]
-    )
-    ami = amis["Images"][0]
-    ami_id = ami["ImageId"]
-    instances = ec2.run_instances(
-        ImageId=ami_id,
-        SubnetId=subnet_id,
-        MaxCount=1,
-        MinCount=1,
-        TagSpecifications=[
-            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Linux"}]}
-        ],
-    )
-    instance_id = instances["Instances"][0]["InstanceId"]
-    ec2.terminate_instances(InstanceIds=[instance_id])
-
-    # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(
-        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-    )
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-    mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [
-        # Checking to see if guacuser exists and then adding it
-        {"count": 0},
-        {"entity_id": 1},
-    ]
-    mock_connection.__enter__.return_value = mock_connection
-    mock_connection.cursor.return_value = mock_cursor
-
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "--log-level=debug",
-            "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
-            "--private-ssh-key=dummy_key",
-            "--rdp-password=dummy_rdp_password",
-            "--rdp-username=dummy_rdp_username",
-            "--vnc-password=dummy_vnc_password",
-            "--vnc-username=dummy_vnc_username",
-            f"--vpc-id={vpc_id}",
-            "--windows-sftp-base=/C:/Users/dummy_user",
-        ],
+    def test_instance_creation(
+        self,
+        args,
+        instance_id,
+        instance_os,
+        instance_private_ip,
+        instance_public_ip,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
-        with patch.object(
-            psycopg, "connect", return_value=mock_connection
-        ) as mock_connect:
-            guacscanner.guacscanner.main()
-            mock_connect.assert_called_once()
-            mock_connection.cursor.assert_called()
-            mock_connection.commit.assert_called()
-            mock_cursor.fetchone.assert_called()
-            mock_cursor.execute.assert_called()
-            mock_cursor.executemany.assert_not_called()
+        """Verify that adding an instance works as expected."""
+        args()
+        guacscanner.guacscanner.main()
 
+        TestInstanceLifecycle.__check_instance(
+            instance_id,
+            instance_os,
+            instance_private_ip,
+            instance_public_ip,
+            postgres_container,
+            postgres_db_name,
+            postgres_username,
+        )
 
-@mock_aws
-def test_stopped_instance():
-    """Verify that adding a stopped instance works as expected."""
-    # Create and populate a VPC with a stopped EC2 instance
-    ec2 = boto3.client("ec2", "us-east-1")
-    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-    vpc_id = vpc["Vpc"]["VpcId"]
-    subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
-    subnet_id = subnet["Subnet"]["SubnetId"]
-    amis = ec2.describe_images(
-        Filters=[
-            {"Name": "Name", "Values": ["amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"]}
-        ]
-    )
-    ami = amis["Images"][0]
-    ami_id = ami["ImageId"]
-    instances = ec2.run_instances(
-        ImageId=ami_id,
-        SubnetId=subnet_id,
-        MaxCount=1,
-        MinCount=1,
-        TagSpecifications=[
-            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Linux"}]}
-        ],
-    )
-    instance_id = instances["Instances"][0]["InstanceId"]
-    ec2.stop_instances(InstanceIds=[instance_id])
-
-    # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(
-        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-    )
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-    mock_cursor.__enter__.return_value = mock_cursor
-    mock_connection.__enter__.return_value = mock_connection
-    mock_connection.cursor.return_value = mock_cursor
-
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "--log-level=debug",
-            "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
-            "--private-ssh-key=dummy_key",
-            "--rdp-password=dummy_rdp_password",
-            "--rdp-username=dummy_rdp_username",
-            "--vnc-password=dummy_vnc_password",
-            "--vnc-username=dummy_vnc_username",
-            f"--vpc-id={vpc_id}",
-            "--windows-sftp-base=/C:/Users/dummy_user",
-        ],
+    def test_instance_stop(
+        self,
+        args,
+        ec2,
+        instance_id,
+        instance_os,
+        instance_private_ip,
+        instance_public_ip,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
-        with patch.object(
-            psycopg, "connect", return_value=mock_connection
-        ) as mock_connect:
-            guacscanner.guacscanner.main()
-            mock_connect.assert_called_once()
-            mock_connection.cursor.assert_called()
-            mock_connection.commit.assert_called()
+        """Verify that stopping an instance works as expected."""
+        args()
+        guacscanner.guacscanner.main()
 
+        # Stop the existing EC2 instance
+        ec2.stop_instances(InstanceIds=[instance_id])
 
-@mock_aws
-def test_new_windows_instance():
-    """Verify that adding a new Windows instance works as expected."""
-    # Create and populate a VPC with an EC2 instance
-    ec2 = boto3.client("ec2", "us-east-1")
-    vpc = ec2.create_vpc(CidrBlock="10.19.74.0/24")
-    vpc_id = vpc["Vpc"]["VpcId"]
-    subnet = ec2.create_subnet(CidrBlock="10.19.74.0/24", VpcId=vpc_id)
-    subnet_id = subnet["Subnet"]["SubnetId"]
-    amis = ec2.describe_images(
-        Filters=[
-            {
-                "Name": "Name",
-                "Values": [
-                    "Windows_Server-2016-English-Full-SQL_2017_Enterprise-2017.10.13"
-                ],
-            }
-        ]
-    )
-    ami = amis["Images"][0]
-    ami_id = ami["ImageId"]
-    ec2.run_instances(
-        ImageId=ami_id,
-        SubnetId=subnet_id,
-        MaxCount=1,
-        MinCount=1,
-        TagSpecifications=[
-            {"ResourceType": "instance", "Tags": [{"Key": "Name", "Value": "Windows"}]}
-        ],
-    )
+        args()
+        guacscanner.guacscanner.main()
 
-    # Mock the PostgreSQL database connection
-    mock_connection = MagicMock(
-        name="Mock PostgreSQL connection", spec_set=psycopg.Connection
-    )
-    mock_cursor = MagicMock(name="Mock PostgreSQL cursor", spec_set=psycopg.Cursor)
-    mock_cursor.__enter__.return_value = mock_cursor
-    mock_cursor.fetchone.side_effect = [
-        # Checking to see if guacuser exists and then adding it
-        {"count": 0},
-        {"entity_id": 1},
-        # Checking to see if the connection exists and then adding it
-        {"count": 0},
-        {"connection_id": 1},
-    ]
-    mock_connection.__enter__.return_value = mock_connection
-    mock_connection.cursor.return_value = mock_cursor
+        TestInstanceLifecycle.__check_instance(
+            instance_id,
+            instance_os,
+            instance_private_ip,
+            instance_public_ip,
+            postgres_container,
+            postgres_db_name,
+            postgres_username,
+        )
 
-    with patch.object(
-        sys,
-        "argv",
-        [
-            "--log-level=debug",
-            "--oneshot",
-            "--postgres-password=dummy_db_password",
-            "--postgres-username=dummy_db_username",
-            "--private-ssh-key=dummy_key",
-            "--rdp-password=dummy_rdp_password",
-            "--rdp-username=dummy_rdp_username",
-            "--vnc-password=dummy_vnc_password",
-            "--vnc-username=dummy_vnc_username",
-            f"--vpc-id={vpc_id}",
-            "--windows-sftp-base=/C:/Users/dummy_user",
-        ],
+    def test_instance_restart(
+        self,
+        args,
+        ec2,
+        instance_id,
+        instance_os,
+        instance_private_ip,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
     ):
-        with patch.object(
-            psycopg, "connect", return_value=mock_connection
-        ) as mock_connect:
-            guacscanner.guacscanner.main()
-            mock_connect.assert_called_once()
-            mock_connection.cursor.assert_called()
-            mock_connection.commit.assert_called()
-            mock_cursor.fetchone.assert_called()
-            mock_cursor.execute.assert_called()
-            mock_cursor.executemany.assert_called()
+        """Verify that restarting an instance works as expected."""
+        args()
+        guacscanner.guacscanner.main()
+
+        # Stop the existing EC2 instance
+        ec2.stop_instances(InstanceIds=[instance_id])
+
+        args()
+        guacscanner.guacscanner.main()
+
+        # Restart the existing EC2 instance
+        ec2.start_instances(InstanceIds=[instance_id])
+
+        args()
+        guacscanner.guacscanner.main()
+
+        # We can't simply use instance_public_ip here because restarting
+        # the instance likely will have changed the public IP, and
+        # guacscanner will have persisted this change to the database.
+        response = ec2.describe_instances(InstanceIds=[instance_id])
+        instance = response["Reservations"][0]["Instances"][0]
+        new_public_ip = instance.get("PublicIpAddress", None)
+
+        TestInstanceLifecycle.__check_instance(
+            instance_id,
+            instance_os,
+            instance_private_ip,
+            new_public_ip,
+            postgres_container,
+            postgres_db_name,
+            postgres_username,
+        )
+
+    def test_instance_terminate(
+        self,
+        args,
+        ec2,
+        instance_id,
+        postgres_container,
+        postgres_db_name,
+        postgres_username,
+    ):
+        """Verify that terminating an instance works as expected."""
+        args()
+        guacscanner.guacscanner.main()
+
+        # Terminate the existing EC2 instance
+        ec2.terminate_instances(InstanceIds=[instance_id])
+
+        args()
+        guacscanner.guacscanner.main()
+
+        response = TestInstanceLifecycle.__query_connections(
+            postgres_container, postgres_db_name, postgres_username
+        )
+        assert "(0 rows)" in response
