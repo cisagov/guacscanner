@@ -21,8 +21,8 @@ from python_on_whales import DockerClient
 # Maximum length for PostgreSQL passwords
 PASSWORD_MAX_LENGTH = 100
 
-# Some special char swquences that we want to inject into our PostgreSQL
-# password to see if our code handles them.
+# Some special character sequences that we want to inject into our
+# PostgreSQL password to see if our code handles them.
 SPECIAL_CHAR_SEQUENCES = ["\\n", "\\r", "\\t", "\\", " "]
 
 
