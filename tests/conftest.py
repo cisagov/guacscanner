@@ -5,9 +5,11 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 
 # Standard Python Libraries
 import itertools
+import math
 import os
 from pathlib import Path
 import random
+import string
 import sys
 
 # Third-Party Libraries
@@ -15,6 +17,13 @@ import boto3
 from moto import mock_aws
 import pytest
 from python_on_whales import DockerClient
+
+# Maximum length for PostgreSQL passwords
+PASSWORD_MAX_LENGTH = 100
+
+# Some special char swquences that we want to inject into our PostgreSQL
+# password to see if our code handles them.
+SPECIAL_CHAR_SEQUENCES = ["\\n", "\\r", "\\t", "\\", " "]
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -205,12 +214,34 @@ def secrets_dir():
     d.rmdir()
 
 
+def random_postgres_string(max_length):
+    """Return random string suitable for a PostgreSQL username or password."""
+    source_chars = string.ascii_letters + string.digits + string.punctuation
+    # flake8 and bandit give DUO102 and B311 errors, respectively, for
+    # the use of random in this code, but since we're not using it for
+    # cryptographic purposes it's OK.
+    length = random.randint(1, max_length)  # noqa: DUO102 # nosec B311
+    s = "".join(random.choices(source_chars, k=length))  # noqa: DUO102 # nosec B311
+    # Inject a random special ASCII character sequence
+    half = math.floor(length / 2)
+    s = (
+        s[:half]
+        + random.choice(SPECIAL_CHAR_SEQUENCES)  # noqa: DUO102 # nosec B311
+        + s[half + 1 :]
+    )
+
+    return s
+
+
 @pytest.fixture
 def postgres_password_secret(secrets_dir):
-    """Return a pathlib Path to the postgres password secret."""
+    """Return a pathlib Path to the randomly-generated postgres password secret."""
+    # Delete any existing file
     f = Path(secrets_dir, "postgres-password")
     f.unlink(missing_ok=True)
-    f.write_text("dummy_password")
+
+    # Generate and save a random password
+    f.write_text(random_postgres_string(PASSWORD_MAX_LENGTH))
     yield f
     f.unlink()
 
@@ -218,8 +249,11 @@ def postgres_password_secret(secrets_dir):
 @pytest.fixture(scope="session")
 def postgres_username_secret(secrets_dir):
     """Return a pathlib Path to the postgres user name secret."""
+    # Delete any existing file
     f = Path(secrets_dir, "postgres-username")
     f.unlink(missing_ok=True)
+
+    # Save the user name
     f.write_text("dummy_user")
     yield f
     f.unlink()
