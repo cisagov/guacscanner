@@ -263,6 +263,9 @@ def postgres_username_secret(secrets_dir):
 
 
 @pytest.fixture
+# We include the PostgreSQL password and username secret fixtures as
+# arguments even though they are never used to ensure that they are
+# created.
 def dockerc(postgres_password_secret, postgres_username_secret):
     """Start up the Docker composition."""
     docker = DockerClient(compose_files=["tests/compose.yml"])
