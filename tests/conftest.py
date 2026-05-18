@@ -214,18 +214,21 @@ def secrets_dir():
     d.rmdir()
 
 
-def random_postgres_string(max_length):
-    """Return random string suitable for a PostgreSQL username or password."""
+def random_postgres_string(max_chars):
+    """Return random string suitable for a PostgreSQL password.
+
+    max_chars must be greater than 1.
+    """
     source_chars = string.ascii_letters + string.digits + string.punctuation
     # flake8 and bandit give DUO102 and B311 errors, respectively, for
     # the use of random in this code, but since we're not using it for
     # cryptographic purposes it's OK.
-    length = random.randint(1, max_length - 1)  # noqa: DUO102 # nosec B311
+    length = random.randint(1, max_chars - 2)  # noqa: DUO102 # nosec B311
     s = "".join(random.choices(source_chars, k=length))  # noqa: DUO102 # nosec B311
     # Inject a random special ASCII character sequence
     half = math.floor(length / 2)
     s = (
-        s[:half]
+        s[: half + 1]
         + random.choice(SPECIAL_CHAR_SEQUENCES)  # noqa: DUO102 # nosec B311
         + s[half + 1 :]
     )
