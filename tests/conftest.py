@@ -223,7 +223,7 @@ def random_postgres_string(max_chars):
     # flake8 and bandit give DUO102 and B311 errors, respectively, for
     # the use of random in this code, but since we're not using it for
     # cryptographic purposes it's OK.
-    length = random.randint(1, max_chars - 2)  # noqa: DUO102 # nosec B311
+    length = random.randint(0, max_chars - 2)  # noqa: DUO102 # nosec B311
     s = "".join(random.choices(source_chars, k=length))  # noqa: DUO102 # nosec B311
     # Inject a random special ASCII character sequence
     half = math.floor(length / 2)
