@@ -219,6 +219,8 @@ def random_postgres_string(max_chars):
 
     max_chars must be greater than 1.
     """
+    assert max_chars > 1, "max_chars must be greater than one."
+
     source_chars = string.ascii_letters + string.digits + string.punctuation
     # flake8 and bandit give DUO102 and B311 errors, respectively, for
     # the use of random in this code, but since we're not using it for
