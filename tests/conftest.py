@@ -230,9 +230,9 @@ def random_postgres_string(max_chars):
     # Inject a random special ASCII character sequence
     half = math.floor(length / 2)
     s = (
-        s[: half + 1]
+        s[:half]
         + random.choice(SPECIAL_CHAR_SEQUENCES)  # noqa: DUO102 # nosec B311
-        + s[half + 1 :]
+        + s[half:]
     )
 
     return s
