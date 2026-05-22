@@ -92,6 +92,30 @@ class TestLogLevels:
             level
         ), f"root logger level should be set to {level.upper()} or equivalent"
 
+    @pytest.mark.usefixtures("postgres_container")
+    def test_no_log_level_specified(self, args, monkeypatch):
+        """Verify that case where no log level is specified."""
+        args("DEBUG")
+        # Drop the --log-level argument
+        monkeypatch.setattr(sys, "argv", sys.argv[:1] + sys.argv[2:])
+
+        monkeypatch.setattr(logging.root, "handlers", [])
+        assert (
+            logging.root.hasHandlers() is False
+        ), "root logger should not have handlers yet"
+
+        guacscanner.guacscanner.main()
+
+        assert (
+            logging.root.hasHandlers() is True
+        ), "root logger should now have a handler"
+        # Here we check the numerical levels since, e.g., WARN and
+        # WARNING are equivalent levels with different names, as are
+        # FATAL and CRITICAL.
+        assert logging.root.getEffectiveLevel() == logging.getLevelName(
+            "INFO"
+        ), "root logger level should be set to INFO or equivalent"
+
     def test_bad_log_level(self, monkeypatch):
         """Validate bad log-level argument returns error."""
         monkeypatch.setattr(sys, "argv", ["bogus", "--log-level=emergency"])

@@ -24,8 +24,7 @@ Options:
   -h --help              Show this message.
   --log-level=LEVEL    If specified, then the log level will be set to
     the specified value.  Valid values are "notset", "debug", "info",
-    "warning", "warn", "error", "fatal", and "critical". [default:
-    info]
+    "warning", "warn", "error", "fatal", and "critical". [default: info]
   --oneshot    If present then the loop that adds (removes)
     connections for new (terminated) instances will only be run once.
   --postgres-hostname=HOSTNAME    If specified then the specified
@@ -36,14 +35,12 @@ Options:
     PostgreSQL database.  Otherwise, the password will be read from a
     local file.
   --postgres-password-file=FILENAME    The file from which the
-    PostgreSQL password will be read. [default:
-    /run/secrets/postgres-password]
+    PostgreSQL password will be read. [default: /run/secrets/postgres-password]
   --postgres-username=USERNAME    If specified then the specified
     value will be used when connecting to the PostgreSQL database.
     Otherwise, the username will be read from a local file.
   --postgres-username-file=FILENAME    The file from which the
-    PostgreSQL username will be read. [default:
-    /run/secrets/postgres-username]
+    PostgreSQL username will be read. [default: /run/secrets/postgres-username]
   --private-ssh-key=KEY  If specified then the specified value will be
     used for the private SSH key.  Otherwise, the SSH key will be read
     from a local file.
@@ -80,8 +77,8 @@ Options:
     will be used as the base path for configuring Windows SFTP
     connections.  Otherwise, the path will be read from a local file.
   --windows-sftp-base-file=FILENAME    The file from which the base
-    path for Windows SFTP connections will be read. [default:
-    /run/secrets/windows-sftp-base]
+    path for Windows SFTP connections will be read.
+    [default: /run/secrets/windows-sftp-base]
 """
 
 # Standard Python Libraries
@@ -870,10 +867,15 @@ def main() -> None:
         with open(validated_args["--windows-sftp-base-file"]) as file:
             windows_sftp_base = file.read().strip()
 
-    db_connection_string = (
-        f"user={postgres_username} password={postgres_password} "
-        f"host={postgres_hostname} port={postgres_port} "
-        f"dbname={postgres_db_name}"
+    # Construct the PostgreSQL connection string using psycopg's helper to
+    # ensure that any special characters (such as backslashes) are safely
+    # escaped.
+    db_connection_string = psycopg.conninfo.make_conninfo(
+        dbname=postgres_db_name,
+        host=postgres_hostname,
+        password=postgres_password,
+        port=postgres_port,
+        user=postgres_username,
     )
 
     vpc_id = validated_args["--vpc-id"]

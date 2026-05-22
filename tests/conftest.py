@@ -5,8 +5,11 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 
 # Standard Python Libraries
 import itertools
+import math
 import os
+from pathlib import Path
 import random
+import string
 import sys
 
 # Third-Party Libraries
@@ -14,6 +17,13 @@ import boto3
 from moto import mock_aws
 import pytest
 from python_on_whales import DockerClient
+
+# Maximum length for PostgreSQL passwords
+PASSWORD_MAX_LENGTH = 100
+
+# Some special character sequences that we want to inject into our
+# PostgreSQL password to see if our code handles them.
+SPECIAL_CHAR_SEQUENCES = ["\\n", "\\r", "\\t", "\\\\"]
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -194,8 +204,90 @@ def args(monkeypatch, vpc_id):
     return _args
 
 
+@pytest.fixture(scope="session")
+def secrets_dir():
+    """Path representing the location of the secrets for the Docker composition."""
+    tests_dir = Path(__file__).parent
+    d = Path(tests_dir, "secrets")
+    d.mkdir()
+    yield d
+    d.rmdir()
+
+
+def random_postgres_string(max_chars):
+    r"""Return random string suitable for a PostgreSQL password.
+
+    max_chars must be greater than 1.
+
+    When we spun up COOL dev-a and staging-a last year @dav3r
+    generated random passwords for the PostgreSQL password secrets.
+    One of these happened to contain two consecutive characters that
+    could be interpreted as an escape sequence, say a '\' followed
+    by a 't'.  As a PostgreSQL password such characters should be
+    interpreted as \\t and that is what
+    psycopg.conninfo.make_conninfo() does.  See _param_escape()[1],
+    which is called by psycopg.conninfo.make_conninfo.
+
+    The intent of this function is to generate a random string that
+    can be used to test whether a PostgreSQL password containing two
+    bytes that _could_ be interpreted as an escape sequence is
+    handled correctly.
+
+    [1]:
+    https://github.com/psycopg/psycopg/blob/57db5c86b71741a967001e62b784984115741525/psycopg/psycopg/conninfo.py#L106-L120
+    [2]:
+    https://github.com/psycopg/psycopg/blob/57db5c86b71741a967001e62b784984115741525/psycopg/psycopg/conninfo.py#L59
+    """
+    assert max_chars > 1, "max_chars must be greater than one."
+
+    source_chars = string.ascii_letters + string.digits + string.punctuation
+    # flake8 and bandit give DUO102 and B311 errors, respectively, for
+    # the use of random in this code, but since we're not using it for
+    # cryptographic purposes it's OK.
+    length = random.randint(0, max_chars - 2)  # noqa: DUO102 # nosec B311
+    s = "".join(random.choices(source_chars, k=length))  # noqa: DUO102 # nosec B311
+    # Inject a random special ASCII character sequence
+    half = math.floor(length / 2)
+    s = (
+        s[:half]
+        + random.choice(SPECIAL_CHAR_SEQUENCES)  # noqa: DUO102 # nosec B311
+        + s[half:]
+    )
+
+    return s
+
+
 @pytest.fixture
-def dockerc():
+def postgres_password_secret(secrets_dir):
+    """Return a pathlib Path to the randomly-generated postgres password secret."""
+    # Delete any existing file
+    f = Path(secrets_dir, "postgres-password")
+    f.unlink(missing_ok=True)
+
+    # Generate and save a random password
+    f.write_text(random_postgres_string(PASSWORD_MAX_LENGTH))
+    yield f
+    f.unlink()
+
+
+@pytest.fixture(scope="session")
+def postgres_username_secret(secrets_dir):
+    """Return a pathlib Path to the postgres user name secret."""
+    # Delete any existing file
+    f = Path(secrets_dir, "postgres-username")
+    f.unlink(missing_ok=True)
+
+    # Save the user name
+    f.write_text("dummy_user")
+    yield f
+    f.unlink()
+
+
+@pytest.fixture
+# We include the PostgreSQL password and username secret fixtures as
+# arguments even though they are never used to ensure that they are
+# created.
+def dockerc(postgres_password_secret, postgres_username_secret):
     """Start up the Docker composition."""
     docker = DockerClient(compose_files=["tests/compose.yml"])
     docker.compose.up(detach=True, start=False, wait=True, wait_timeout=60)
@@ -221,10 +313,7 @@ def postgres_db_name():
     return "guacamole_db"
 
 
-@pytest.fixture(scope="session")
-def postgres_username():
+@pytest.fixture
+def postgres_username(postgres_username_secret):
     """Return the username to use when connecting to the postgres instance."""
-    with open("tests/secrets/postgres-username") as file:
-        postgres_username = file.read().strip()
-
-    return postgres_username
+    return postgres_username_secret.read_text().strip()
