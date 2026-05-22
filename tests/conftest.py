@@ -215,9 +215,28 @@ def secrets_dir():
 
 
 def random_postgres_string(max_chars):
-    """Return random string suitable for a PostgreSQL password.
+    r"""Return random string suitable for a PostgreSQL password.
 
     max_chars must be greater than 1.
+
+    When we spun up COOL dev-a and staging-a last year @dav3r
+    generated random passwords for the PostgreSQL password secrets.
+    One of these happened to contain two consecutive characters that
+    could be interpreted as an escape sequence, say a '\' followed
+    by a 't'.  As a PostgreSQL password such characters should be
+    interpreted as \\t and that is what
+    psycopg.conninfo.make_conninfo() does.  See _param_escape()[1],
+    which is called by psycopg.conninfo.make_conninfo.
+
+    The intent of this function is to generate a random string that
+    can be used to test whether a PostgreSQL password containing two
+    bytes that _could_ be interpreted as an escape sequence is
+    handled correctly.
+
+    [1]:
+    https://github.com/psycopg/psycopg/blob/57db5c86b71741a967001e62b784984115741525/psycopg/psycopg/conninfo.py#L106-L120
+    [2]:
+    https://github.com/psycopg/psycopg/blob/57db5c86b71741a967001e62b784984115741525/psycopg/psycopg/conninfo.py#L59
     """
     assert max_chars > 1, "max_chars must be greater than one."
 
