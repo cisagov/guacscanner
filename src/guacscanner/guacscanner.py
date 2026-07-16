@@ -694,7 +694,13 @@ def remove_instance_connections(db_connection, instance):
 
 def get_connection_name(instance):
     """Return the unique connection name for an EC2 instance."""
-    name = [tag["Value"] for tag in instance.tags if tag["Key"] == "Name"][0]
+    # instance.tags is None when the instance has no tags at all, and the
+    # list may not contain a Name tag.  Fall back to the instance id so we
+    # still return a usable, unique connection name instead of crashing.
+    name = next(
+        (tag["Value"] for tag in (instance.tags or []) if tag["Key"] == "Name"),
+        instance.id,
+    )
     private_ip = instance.private_ip_address
     public_ip = instance.public_ip_address
     ipv6_ip = instance.ipv6_address
