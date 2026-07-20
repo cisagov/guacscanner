@@ -2,17 +2,19 @@
 
 # Third-Party Libraries
 import boto3
-from moto import mock_aws
+import pytest
 
 # cisagov Libraries
 import guacscanner
 
 
-class TestGetConnectionName:
-    """Tests for the get_connection_name helper."""
+# This is a "factory as fixture":
+# https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures
+@pytest.fixture
+def make_instance(moto):
+    """Return a function that can be used to create a moto-backed instance."""
 
-    @staticmethod
-    def __make_instance(tag_specs=None):
+    def _make_instance(tag_specs=None):
         """Create a moto-backed EC2 resource instance for testing.
 
         Passing tag_specs=None leaves the instance untagged, which is
@@ -34,10 +36,15 @@ class TestGetConnectionName:
         instance.reload()
         return instance
 
-    @mock_aws
-    def test_untagged_instance(self):
+    return _make_instance
+
+
+class TestGetConnectionName:
+    """Tests for the get_connection_name helper."""
+
+    def test_untagged_instance(self, make_instance):
         """An instance with no tags should not raise (tags is None)."""
-        instance = TestGetConnectionName.__make_instance()
+        instance = make_instance()
         assert instance.tags is None
 
         name = guacscanner.guacscanner.get_connection_name(instance)
@@ -45,10 +52,9 @@ class TestGetConnectionName:
         # Falls back to the instance id when no Name tag is present.
         assert instance.id in name
 
-    @mock_aws
-    def test_no_name_tag(self):
+    def test_no_name_tag(self, make_instance):
         """An instance with tags but no Name tag should not raise."""
-        instance = TestGetConnectionName.__make_instance(
+        instance = make_instance(
             tag_specs=[
                 {
                     "ResourceType": "instance",
@@ -61,10 +67,9 @@ class TestGetConnectionName:
 
         assert instance.id in name
 
-    @mock_aws
-    def test_name_tag_used_when_present(self):
+    def test_name_tag_used_when_present(self, make_instance):
         """The Name tag value is used when it is present."""
-        instance = TestGetConnectionName.__make_instance(
+        instance = make_instance(
             tag_specs=[
                 {
                     "ResourceType": "instance",
