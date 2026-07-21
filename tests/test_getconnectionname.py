@@ -9,7 +9,7 @@ class TestGetConnectionName:
 
     def test_untagged_instance(self, make_instance):
         """An instance with no tags should not raise (tags is None)."""
-        instance = make_instance(tag_specs=None)
+        instance = make_instance(tags=None)
         assert instance.tags is None
 
         name = guacscanner.guacscanner.get_connection_name(instance)
@@ -19,14 +19,7 @@ class TestGetConnectionName:
 
     def test_no_name_tag(self, make_instance):
         """An instance with tags but no Name tag should not raise."""
-        instance = make_instance(
-            tag_specs=[
-                {
-                    "ResourceType": "instance",
-                    "Tags": [{"Key": "Environment", "Value": "test"}],
-                }
-            ]
-        )
+        instance = make_instance(tags=[{"Key": "Environment", "Value": "test"}])
 
         name = guacscanner.guacscanner.get_connection_name(instance)
 
@@ -34,14 +27,7 @@ class TestGetConnectionName:
 
     def test_name_tag_used_when_present(self, make_instance):
         """The Name tag value is used when it is present."""
-        instance = make_instance(
-            tag_specs=[
-                {
-                    "ResourceType": "instance",
-                    "Tags": [{"Key": "Name", "Value": "webserver"}],
-                }
-            ]
-        )
+        instance = make_instance(tags=[{"Key": "Name", "Value": "webserver"}])
 
         name = guacscanner.guacscanner.get_connection_name(instance)
 

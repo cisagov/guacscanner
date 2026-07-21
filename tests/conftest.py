@@ -128,29 +128,38 @@ def make_instance(ec2, request, subnet_id):
     ami = amis["Images"][0]
     ami_id = ami["ImageId"]
 
-    def _make_instance(tag_specs=Sentinel.MISSING):
+    def _make_instance(tags=Sentinel.MISSING):
         """Create an instance running the specified OS."""
-        if tag_specs is Sentinel.MISSING:
-            tag_specs = [
-                {
-                    "ResourceType": "instance",
-                    "Tags": [{"Key": "Name", "Value": os.capitalize()}],
-                }
-            ]
-
-        response = ec2.run_instances(
-            ImageId=ami_id,
-            MaxCount=1,
-            MinCount=1,
-            NetworkInterfaces=[
+        kwargs = {
+            "ImageId": ami_id,
+            "MaxCount": 1,
+            "MinCount": 1,
+            "NetworkInterfaces": [
                 {
                     "AssociatePublicIpAddress": assign_public_ip,
                     "DeviceIndex": 0,
                     "SubnetId": subnet_id,
                 }
             ],
-            TagSpecifications=tag_specs,
-        )
+        }
+
+        tag_specs = [
+            {
+                # The ResourceType is required
+                "ResourceType": "instance",
+            }
+        ]
+        if tags is Sentinel.MISSING:
+            tag_specs[0]["Tags"] = [{"Key": "Name", "Value": os.capitalize()}]
+            kwargs["TagSpecifications"] = tag_specs
+        elif tags is not None:
+            tag_specs[0]["Tags"] = tags
+            kwargs["TagSpecifications"] = tag_specs
+        else:
+            # tags equal to None means not to add any tags
+            pass
+
+        response = ec2.run_instances(**kwargs)
 
         instance = response["Instances"][0]
         # Retrieve the instance information as a boto3 resource
