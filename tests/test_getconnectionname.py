@@ -2,41 +2,9 @@
 
 # Third-Party Libraries
 import boto3
-import pytest
 
 # cisagov Libraries
 import guacscanner
-
-
-# This is a "factory as fixture":
-# https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures
-@pytest.fixture
-def make_instance(moto):
-    """Return a function that can be used to create a moto-backed instance."""
-
-    def _make_instance(tag_specs=None):
-        """Create a moto-backed EC2 resource instance for testing.
-
-        Passing tag_specs=None leaves the instance untagged, which is
-        how boto3 reports an EC2 instance that has no tags at all
-        (instance.tags is None in that case).
-        """
-        ec2 = boto3.resource("ec2", region_name="us-east-1")
-        vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
-        subnet = ec2.create_subnet(VpcId=vpc.id, CidrBlock="10.0.0.0/24")
-        kwargs = {
-            "ImageId": "ami-12345678",
-            "MinCount": 1,
-            "MaxCount": 1,
-            "SubnetId": subnet.id,
-        }
-        if tag_specs is not None:
-            kwargs["TagSpecifications"] = tag_specs
-        instance = ec2.create_instances(**kwargs)[0]
-        instance.reload()
-        return instance
-
-    return _make_instance
 
 
 class TestGetConnectionName:
@@ -44,13 +12,16 @@ class TestGetConnectionName:
 
     def test_untagged_instance(self, make_instance):
         """An instance with no tags should not raise (tags is None)."""
-        instance = make_instance()
+        instance = make_instance(tag_specs=None)
         assert instance.tags is None
 
-        name = guacscanner.guacscanner.get_connection_name(instance)
+        # We need to retrieve the resource as a boto3 resource for
+        # compatibility with get_connection_name().
+        instance_as_resource = boto3.resource("ec2").Instance(instance["id"])
+        name = guacscanner.guacscanner.get_connection_name(instance_as_resource)
 
         # Falls back to the instance id when no Name tag is present.
-        assert instance.id in name
+        assert instance["id"] in name
 
     def test_no_name_tag(self, make_instance):
         """An instance with tags but no Name tag should not raise."""
@@ -63,9 +34,12 @@ class TestGetConnectionName:
             ]
         )
 
-        name = guacscanner.guacscanner.get_connection_name(instance)
+        # We need to retrieve the resource as a boto3 resource for
+        # compatibility with get_connection_name().
+        instance_as_resource = boto3.resource("ec2").Instance(instance["id"])
+        name = guacscanner.guacscanner.get_connection_name(instance_as_resource)
 
-        assert instance.id in name
+        assert instance["id"] in name
 
     def test_name_tag_used_when_present(self, make_instance):
         """The Name tag value is used when it is present."""
@@ -78,6 +52,9 @@ class TestGetConnectionName:
             ]
         )
 
-        name = guacscanner.guacscanner.get_connection_name(instance)
+        # We need to retrieve the resource as a boto3 resource for
+        # compatibility with get_connection_name().
+        instance_as_resource = boto3.resource("ec2").Instance(instance["id"])
+        name = guacscanner.guacscanner.get_connection_name(instance_as_resource)
 
-        assert name.startswith(f"webserver ({instance.id})")
+        assert name.startswith(f'webserver ({instance["id"]})')

@@ -251,23 +251,22 @@ class TestInstanceLifecycle:
     def test_instance_creation(
         self,
         args,
-        instance_id,
-        instance_os,
-        instance_private_ip,
-        instance_public_ip,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that adding an instance works as expected."""
+        instance = make_instance()
+
         args()
         guacscanner.guacscanner.main()
 
         TestInstanceLifecycle.__check_instance(
-            instance_id,
-            instance_os,
-            instance_private_ip,
-            instance_public_ip,
+            instance["id"],
+            instance["os"],
+            instance["private_ip"],
+            instance["public_ip"],
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -277,29 +276,28 @@ class TestInstanceLifecycle:
         self,
         args,
         ec2,
-        instance_id,
-        instance_os,
-        instance_private_ip,
-        instance_public_ip,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that stopping an instance works as expected."""
+        instance = make_instance()
+
         args()
         guacscanner.guacscanner.main()
 
         # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[instance_id])
+        ec2.stop_instances(InstanceIds=[instance["id"]])
 
         args()
         guacscanner.guacscanner.main()
 
         TestInstanceLifecycle.__check_instance(
-            instance_id,
-            instance_os,
-            instance_private_ip,
-            instance_public_ip,
+            instance["id"],
+            instance["os"],
+            instance["private_ip"],
+            instance["public_ip"],
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -309,25 +307,25 @@ class TestInstanceLifecycle:
         self,
         args,
         ec2,
-        instance_id,
-        instance_os,
-        instance_private_ip,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that restarting an instance works as expected."""
+        instance = make_instance()
+
         args()
         guacscanner.guacscanner.main()
 
         # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[instance_id])
+        ec2.stop_instances(InstanceIds=[instance["id"]])
 
         args()
         guacscanner.guacscanner.main()
 
         # Restart the existing EC2 instance
-        ec2.start_instances(InstanceIds=[instance_id])
+        ec2.start_instances(InstanceIds=[instance["id"]])
 
         args()
         guacscanner.guacscanner.main()
@@ -335,14 +333,14 @@ class TestInstanceLifecycle:
         # We can't simply use instance_public_ip here because restarting
         # the instance likely will have changed the public IP, and
         # guacscanner will have persisted this change to the database.
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
-        new_public_ip = instance.get("PublicIpAddress", None)
+        response = ec2.describe_instances(InstanceIds=[instance["id"]])
+        new_instance = response["Reservations"][0]["Instances"][0]
+        new_public_ip = new_instance.get("PublicIpAddress", None)
 
         TestInstanceLifecycle.__check_instance(
-            instance_id,
-            instance_os,
-            instance_private_ip,
+            instance["id"],
+            instance["os"],
+            instance["private_ip"],
             new_public_ip,
             postgres_container,
             postgres_db_name,
@@ -353,17 +351,19 @@ class TestInstanceLifecycle:
         self,
         args,
         ec2,
-        instance_id,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that terminating an instance works as expected."""
+        instance = make_instance()
+
         args()
         guacscanner.guacscanner.main()
 
         # Terminate the existing EC2 instance
-        ec2.terminate_instances(InstanceIds=[instance_id])
+        ec2.terminate_instances(InstanceIds=[instance["id"]])
 
         args()
         guacscanner.guacscanner.main()
