@@ -4,6 +4,7 @@ https://docs.pytest.org/en/latest/writing_plugins.html#conftest-py-plugins
 """
 
 # Standard Python Libraries
+from enum import Enum
 import itertools
 import math
 import os
@@ -89,14 +90,23 @@ def subnet_id(ec2, vpc_cidr, vpc_id):
     return subnet["Subnet"]["SubnetId"]
 
 
+# Sentinel pattern
+class Sentinel(Enum):
+    """Sentinel value for functions that cannot use None as a default."""
+
+    MISSING = "MISSING"
+
+
+# This is a "factory as fixture":
+# https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures
 @pytest.fixture(
     # Associate a nice name with each param value
     ids=lambda x: f"{x[0]} {'with' if x[1] else 'without'} public IP",
     # Returns the Cartesian product as a list of tuples
     params=itertools.product(["Linux", "Windows"], [True, False]),
 )
-def instance(ec2, request, subnet_id):
-    """Create an instance running the specified OS."""
+def make_instance(ec2, request, subnet_id):
+    """Return a function that creates an instance running the specified OS."""
     os = request.param[0]
     if os.lower() == "linux":
         ami = "amzn-ami-hvm-2017.09.1.20171103-x86_64-gp2"
@@ -118,59 +128,39 @@ def instance(ec2, request, subnet_id):
     ami = amis["Images"][0]
     ami_id = ami["ImageId"]
 
-    response = ec2.run_instances(
-        ImageId=ami_id,
-        MaxCount=1,
-        MinCount=1,
-        NetworkInterfaces=[
-            {
-                "AssociatePublicIpAddress": assign_public_ip,
-                "DeviceIndex": 0,
-                "SubnetId": subnet_id,
-            }
-        ],
-        TagSpecifications=[
-            {
-                "ResourceType": "instance",
-                "Tags": [{"Key": "Name", "Value": os.capitalize()}],
-            }
-        ],
-    )
+    def _make_instance(tag_specs=Sentinel.MISSING):
+        """Create an instance running the specified OS."""
+        if tag_specs is Sentinel.MISSING:
+            tag_specs = [
+                {
+                    "ResourceType": "instance",
+                    "Tags": [{"Key": "Name", "Value": os.capitalize()}],
+                }
+            ]
 
-    instance = response["Instances"][0]
-    return {
-        "id": instance["InstanceId"],
-        "os": os,
-        "private_ip": instance["PrivateIpAddress"],
-        "public_ip": instance.get("PublicIpAddress", None),
-    }
+        response = ec2.run_instances(
+            ImageId=ami_id,
+            MaxCount=1,
+            MinCount=1,
+            NetworkInterfaces=[
+                {
+                    "AssociatePublicIpAddress": assign_public_ip,
+                    "DeviceIndex": 0,
+                    "SubnetId": subnet_id,
+                }
+            ],
+            TagSpecifications=tag_specs,
+        )
 
+        instance = response["Instances"][0]
+        return {
+            "id": instance["InstanceId"],
+            "os": os,
+            "private_ip": instance["PrivateIpAddress"],
+            "public_ip": instance.get("PublicIpAddress", None),
+        }
 
-@pytest.fixture
-def instance_id(instance):
-    """Return the instance ID."""
-    return instance["id"]
-
-
-@pytest.fixture
-def instance_private_ip(instance):
-    """Return the private IP for the instance."""
-    return instance["private_ip"]
-
-
-@pytest.fixture
-def instance_public_ip(instance):
-    """Return the public IP for the instance.
-
-    Returns None if the instance does not have a public IP.
-    """
-    return instance["public_ip"]
-
-
-@pytest.fixture
-def instance_os(instance):
-    """Return the instance OS."""
-    return instance["os"]
+    return _make_instance
 
 
 # This is a "factory as fixture":
