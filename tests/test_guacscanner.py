@@ -230,8 +230,8 @@ class TestInstanceLifecycle:
     def __check_instance(
         instance_id,
         instance_os,
-        instance_private_ip,
-        instance_public_ip,
+        instance_private_ip_address,
+        instance_public_ip_address,
         postgres_container,
         postgres_db_name,
         postgres_username,
@@ -244,9 +244,9 @@ class TestInstanceLifecycle:
         assert "(1 row)" in response
         assert instance_id in response
         assert instance_os in response
-        assert instance_private_ip in response
-        if instance_public_ip is not None:
-            assert instance_public_ip in response
+        assert instance_private_ip_address in response
+        if instance_public_ip_address is not None:
+            assert instance_public_ip_address in response
 
     def test_instance_creation(
         self,
@@ -263,10 +263,10 @@ class TestInstanceLifecycle:
         guacscanner.guacscanner.main()
 
         TestInstanceLifecycle.__check_instance(
-            instance["id"],
-            instance["os"],
-            instance["private_ip"],
-            instance["public_ip"],
+            instance.id,
+            instance.os,
+            instance.private_ip_address,
+            instance.public_ip_address,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -288,16 +288,16 @@ class TestInstanceLifecycle:
         guacscanner.guacscanner.main()
 
         # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[instance["id"]])
+        ec2.stop_instances(InstanceIds=[instance.id])
 
         make_args()
         guacscanner.guacscanner.main()
 
         TestInstanceLifecycle.__check_instance(
-            instance["id"],
-            instance["os"],
-            instance["private_ip"],
-            instance["public_ip"],
+            instance.id,
+            instance.os,
+            instance.private_ip_address,
+            instance.public_ip_address,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -319,29 +319,28 @@ class TestInstanceLifecycle:
         guacscanner.guacscanner.main()
 
         # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[instance["id"]])
+        ec2.stop_instances(InstanceIds=[instance.id])
 
         make_args()
         guacscanner.guacscanner.main()
 
         # Restart the existing EC2 instance
-        ec2.start_instances(InstanceIds=[instance["id"]])
+        ec2.start_instances(InstanceIds=[instance.id])
 
         make_args()
         guacscanner.guacscanner.main()
 
-        # We can't simply use instance_public_ip here because restarting
-        # the instance likely will have changed the public IP, and
-        # guacscanner will have persisted this change to the database.
-        response = ec2.describe_instances(InstanceIds=[instance["id"]])
-        new_instance = response["Reservations"][0]["Instances"][0]
-        new_public_ip = new_instance.get("PublicIpAddress", None)
+        # We can't simply use instance.public_ip_address here because
+        # restarting the instance likely will have changed the public
+        # IP, and guacscanner will have persisted this change to the
+        # database.
+        instance.reload()
 
         TestInstanceLifecycle.__check_instance(
-            instance["id"],
-            instance["os"],
-            instance["private_ip"],
-            new_public_ip,
+            instance.id,
+            instance.os,
+            instance.private_ip_address,
+            instance.public_ip_address,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -363,7 +362,7 @@ class TestInstanceLifecycle:
         guacscanner.guacscanner.main()
 
         # Terminate the existing EC2 instance
-        ec2.terminate_instances(InstanceIds=[instance["id"]])
+        ec2.terminate_instances(InstanceIds=[instance.id])
 
         make_args()
         guacscanner.guacscanner.main()

@@ -153,12 +153,12 @@ def make_instance(ec2, request, subnet_id):
         )
 
         instance = response["Instances"][0]
-        return {
-            "id": instance["InstanceId"],
-            "os": os,
-            "private_ip": instance["PrivateIpAddress"],
-            "public_ip": instance.get("PublicIpAddress", None),
-        }
+        # Retrieve the instance information as a boto3 resource
+        instance_as_resource = boto3.resource("ec2").Instance(instance["InstanceId"])
+        # Inject the OS information, since it is used in some of our
+        # tests.
+        instance_as_resource.os = os
+        return instance_as_resource
 
     return _make_instance
 

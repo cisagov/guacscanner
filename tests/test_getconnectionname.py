@@ -1,8 +1,5 @@
 """Tests for guacscanner's get_connection_name helper."""
 
-# Third-Party Libraries
-import boto3
-
 # cisagov Libraries
 import guacscanner
 
@@ -15,13 +12,10 @@ class TestGetConnectionName:
         instance = make_instance(tag_specs=None)
         assert instance.tags is None
 
-        # We need to retrieve the resource as a boto3 resource for
-        # compatibility with get_connection_name().
-        instance_as_resource = boto3.resource("ec2").Instance(instance["id"])
-        name = guacscanner.guacscanner.get_connection_name(instance_as_resource)
+        name = guacscanner.guacscanner.get_connection_name(instance)
 
         # Falls back to the instance id when no Name tag is present.
-        assert instance["id"] in name
+        assert instance.id in name
 
     def test_no_name_tag(self, make_instance):
         """An instance with tags but no Name tag should not raise."""
@@ -34,12 +28,9 @@ class TestGetConnectionName:
             ]
         )
 
-        # We need to retrieve the resource as a boto3 resource for
-        # compatibility with get_connection_name().
-        instance_as_resource = boto3.resource("ec2").Instance(instance["id"])
-        name = guacscanner.guacscanner.get_connection_name(instance_as_resource)
+        name = guacscanner.guacscanner.get_connection_name(instance)
 
-        assert instance["id"] in name
+        assert instance.id in name
 
     def test_name_tag_used_when_present(self, make_instance):
         """The Name tag value is used when it is present."""
@@ -52,9 +43,6 @@ class TestGetConnectionName:
             ]
         )
 
-        # We need to retrieve the resource as a boto3 resource for
-        # compatibility with get_connection_name().
-        instance_as_resource = boto3.resource("ec2").Instance(instance["id"])
-        name = guacscanner.guacscanner.get_connection_name(instance_as_resource)
+        name = guacscanner.guacscanner.get_connection_name(instance)
 
-        assert name.startswith(f'webserver ({instance["id"]})')
+        assert name.startswith(f"webserver ({instance.id})")
