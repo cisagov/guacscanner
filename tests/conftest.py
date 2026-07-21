@@ -166,10 +166,10 @@ def make_instance(ec2, request, subnet_id):
 # This is a "factory as fixture":
 # https://docs.pytest.org/en/stable/how-to/fixtures.html#factories-as-fixtures
 @pytest.fixture
-def args(monkeypatch, vpc_id):
+def make_args(monkeypatch, vpc_id):
     """Return a function that can be used to set sys.argv for guacscanner."""
 
-    def _args(log_level="debug"):
+    def _make_args(log_level="debug"):
         """Set sys.argv for guacscanner."""
         monkeypatch.setattr(
             sys,
@@ -191,7 +191,7 @@ def args(monkeypatch, vpc_id):
             ],
         )
 
-    return _args
+    return _make_args
 
 
 @pytest.fixture(scope="session")
