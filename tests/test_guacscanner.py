@@ -72,9 +72,9 @@ class TestLogLevels:
 
     @pytest.mark.parametrize("level", LOG_LEVELS)
     @pytest.mark.usefixtures("postgres_container")
-    def test_log_levels(self, args, level, monkeypatch):
+    def test_log_levels(self, make_args, level, monkeypatch):
         """Validate commandline log-level arguments."""
-        args(level)
+        make_args(level)
         monkeypatch.setattr(logging.root, "handlers", [])
         assert (
             logging.root.hasHandlers() is False
@@ -93,9 +93,9 @@ class TestLogLevels:
         ), f"root logger level should be set to {level.upper()} or equivalent"
 
     @pytest.mark.usefixtures("postgres_container")
-    def test_no_log_level_specified(self, args, monkeypatch):
+    def test_no_log_level_specified(self, make_args, monkeypatch):
         """Verify that case where no log level is specified."""
-        args("DEBUG")
+        make_args("DEBUG")
         # Drop the --log-level argument
         monkeypatch.setattr(sys, "argv", sys.argv[:1] + sys.argv[2:])
 
@@ -155,7 +155,7 @@ class TestGuacuser:
         )
 
     def test_addition_of_guacuser(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, make_args, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected."""
         # Verify that guacuser does not yet exist
@@ -165,7 +165,7 @@ class TestGuacuser:
         assert "guacadmin" in response
         assert "guacuser" not in response
 
-        args()
+        make_args()
         # First run creates guacuser.
         guacscanner.guacscanner.main()
 
@@ -181,10 +181,10 @@ class TestGuacuser:
         assert "(2 rows)" in response
 
     def test_addition_of_guacuser_already_exists(
-        self, args, postgres_container, postgres_db_name, postgres_username
+        self, make_args, postgres_container, postgres_db_name, postgres_username
     ):
         """Verify that adding the guacuser works as expected when it already exists."""
-        args()
+        make_args()
         # First run creates guacuser.
         guacscanner.guacscanner.main()
 
@@ -195,7 +195,7 @@ class TestGuacuser:
         assert "guacadmin" in response
         assert "guacuser" in response
 
-        args()
+        make_args()
         # Second run exercises the already-exists/idempotency path.
         guacscanner.guacscanner.main()
 
@@ -230,8 +230,8 @@ class TestInstanceLifecycle:
     def __check_instance(
         instance_id,
         instance_os,
-        instance_private_ip,
-        instance_public_ip,
+        instance_private_ip_address,
+        instance_public_ip_address,
         postgres_container,
         postgres_db_name,
         postgres_username,
@@ -244,30 +244,29 @@ class TestInstanceLifecycle:
         assert "(1 row)" in response
         assert instance_id in response
         assert instance_os in response
-        assert instance_private_ip in response
-        if instance_public_ip is not None:
-            assert instance_public_ip in response
+        assert instance_private_ip_address in response
+        if instance_public_ip_address is not None:
+            assert instance_public_ip_address in response
 
     def test_instance_creation(
         self,
-        args,
-        instance_id,
-        instance_os,
-        instance_private_ip,
-        instance_public_ip,
+        make_args,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that adding an instance works as expected."""
-        args()
+        instance = make_instance()
+
+        make_args()
         guacscanner.guacscanner.main()
 
         TestInstanceLifecycle.__check_instance(
-            instance_id,
-            instance_os,
-            instance_private_ip,
-            instance_public_ip,
+            instance.id,
+            instance.os,
+            instance.private_ip_address,
+            instance.public_ip_address,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -275,31 +274,30 @@ class TestInstanceLifecycle:
 
     def test_instance_stop(
         self,
-        args,
+        make_args,
         ec2,
-        instance_id,
-        instance_os,
-        instance_private_ip,
-        instance_public_ip,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that stopping an instance works as expected."""
-        args()
+        instance = make_instance()
+
+        make_args()
         guacscanner.guacscanner.main()
 
         # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[instance_id])
+        ec2.stop_instances(InstanceIds=[instance.id])
 
-        args()
+        make_args()
         guacscanner.guacscanner.main()
 
         TestInstanceLifecycle.__check_instance(
-            instance_id,
-            instance_os,
-            instance_private_ip,
-            instance_public_ip,
+            instance.id,
+            instance.os,
+            instance.private_ip_address,
+            instance.public_ip_address,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -307,43 +305,42 @@ class TestInstanceLifecycle:
 
     def test_instance_restart(
         self,
-        args,
+        make_args,
         ec2,
-        instance_id,
-        instance_os,
-        instance_private_ip,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that restarting an instance works as expected."""
-        args()
+        instance = make_instance()
+
+        make_args()
         guacscanner.guacscanner.main()
 
         # Stop the existing EC2 instance
-        ec2.stop_instances(InstanceIds=[instance_id])
+        ec2.stop_instances(InstanceIds=[instance.id])
 
-        args()
+        make_args()
         guacscanner.guacscanner.main()
 
         # Restart the existing EC2 instance
-        ec2.start_instances(InstanceIds=[instance_id])
+        ec2.start_instances(InstanceIds=[instance.id])
 
-        args()
+        make_args()
         guacscanner.guacscanner.main()
 
-        # We can't simply use instance_public_ip here because restarting
-        # the instance likely will have changed the public IP, and
-        # guacscanner will have persisted this change to the database.
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
-        new_public_ip = instance.get("PublicIpAddress", None)
+        # We can't simply use instance.public_ip_address here because
+        # restarting the instance likely will have changed the public
+        # IP, and guacscanner will have persisted this change to the
+        # database.
+        instance.reload()
 
         TestInstanceLifecycle.__check_instance(
-            instance_id,
-            instance_os,
-            instance_private_ip,
-            new_public_ip,
+            instance.id,
+            instance.os,
+            instance.private_ip_address,
+            instance.public_ip_address,
             postgres_container,
             postgres_db_name,
             postgres_username,
@@ -351,21 +348,23 @@ class TestInstanceLifecycle:
 
     def test_instance_terminate(
         self,
-        args,
+        make_args,
         ec2,
-        instance_id,
+        make_instance,
         postgres_container,
         postgres_db_name,
         postgres_username,
     ):
         """Verify that terminating an instance works as expected."""
-        args()
+        instance = make_instance()
+
+        make_args()
         guacscanner.guacscanner.main()
 
         # Terminate the existing EC2 instance
-        ec2.terminate_instances(InstanceIds=[instance_id])
+        ec2.terminate_instances(InstanceIds=[instance.id])
 
-        args()
+        make_args()
         guacscanner.guacscanner.main()
 
         response = TestInstanceLifecycle.__query_connections(
